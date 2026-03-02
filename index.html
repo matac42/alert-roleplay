@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alert Response Roleplay</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0a;--fg:#00ff41;--dim:#005500;--bright:#33ff66;
+  --red:#ff3333;--yellow:#ffcc00;--cyan:#00ccff;--white:#e0e0e0;
+  --panel:#111;--border:#333;--input-bg:#0d0d0d;
+}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier New',monospace;font-size:14px;overflow:hidden}
+/* Screens */
+.screen{display:none;height:100vh;flex-direction:column}
+.screen.active{display:flex}
+/* Scenario Select */
+#select-screen{padding:20px;overflow-y:auto}
+#select-screen h1{color:var(--bright);font-size:24px;text-align:center;margin-bottom:4px}
+#select-screen .subtitle{color:var(--dim);text-align:center;margin-bottom:24px;font-size:13px}
+.scenario-list{max-width:700px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.scenario-card{background:var(--panel);border:1px solid var(--border);padding:16px;cursor:pointer;transition:border-color .2s,background .2s}
+.scenario-card:hover{border-color:var(--fg);background:#1a1a1a}
+.scenario-card .sc-num{color:var(--dim);font-size:12px}
+.scenario-card .sc-title{color:var(--bright);font-size:16px;margin:4px 0}
+.scenario-card .sc-host{color:var(--cyan);font-size:12px}
+.scenario-card .sc-desc{color:var(--white);font-size:13px;margin-top:6px;opacity:.8}
+.scenario-card .sc-diff{font-size:11px;margin-top:6px}
+.diff-easy{color:#00cc00}.diff-med{color:var(--yellow)}.diff-hard{color:var(--red)}
+.best-score{color:var(--yellow);font-size:11px;margin-top:4px}
+/* Game Screen */
+#game-screen{display:none;flex-direction:column;height:100vh}
+#game-screen.active{display:flex}
+.alert-banner{background:#1a0000;border:2px solid var(--red);padding:10px 16px;margin:8px;animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{border-color:var(--red)}50%{border-color:#660000}}
+.alert-banner .alert-label{color:var(--red);font-weight:bold;font-size:13px}
+.alert-banner .alert-host{color:var(--yellow);font-size:12px;margin-top:2px}
+.alert-banner .alert-msg{color:var(--white);font-size:12px;margin-top:2px}
+.status-bar{display:flex;gap:16px;padding:4px 16px;background:#0d0d0d;border-bottom:1px solid var(--border);font-size:12px;flex-shrink:0;flex-wrap:wrap}
+.status-bar span{white-space:nowrap}
+.status-bar .st-label{color:var(--dim)}
+.status-bar .st-val{color:var(--cyan)}
+.terminal-wrap{flex:1;overflow-y:auto;padding:8px 16px 0;scroll-behavior:smooth}
+.terminal-wrap::-webkit-scrollbar{width:6px}
+.terminal-wrap::-webkit-scrollbar-track{background:var(--bg)}
+.terminal-wrap::-webkit-scrollbar-thumb{background:var(--border)}
+.term-line{white-space:pre-wrap;word-break:break-all;line-height:1.4;font-size:13px}
+.term-line.prompt-line{color:var(--bright)}
+.term-line.output{color:var(--white)}
+.term-line.error{color:var(--red)}
+.term-line.info{color:var(--cyan)}
+.term-line.success{color:#00cc00}
+.input-row{display:flex;align-items:center;padding:4px 16px 8px;flex-shrink:0;background:var(--bg)}
+.input-row .prompt-text{color:var(--bright);white-space:nowrap;margin-right:4px;font-size:13px}
+.input-row input{flex:1;background:transparent;border:none;color:var(--fg);font-family:inherit;font-size:13px;outline:none;caret-color:var(--fg)}
+/* Result Screen */
+#result-screen{padding:20px;overflow-y:auto;align-items:center}
+.result-box{max-width:650px;width:100%;margin:0 auto}
+.result-box h2{text-align:center;margin-bottom:16px;color:var(--bright)}
+.grade-display{text-align:center;font-size:72px;font-weight:bold;margin:16px 0}
+.grade-S{color:#ffcc00}.grade-A{color:#00ff41}.grade-B{color:#00ccff}.grade-C{color:var(--white)}.grade-D{color:#ff3333}
+.score-total{text-align:center;font-size:24px;color:var(--white);margin-bottom:20px}
+.score-breakdown{background:var(--panel);border:1px solid var(--border);padding:16px;margin-bottom:16px}
+.score-breakdown h3{color:var(--cyan);margin-bottom:8px;font-size:14px}
+.score-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.score-row .sr-label{color:var(--white)}
+.score-row .sr-val{color:var(--bright)}
+.score-row .sr-penalty{color:var(--red)}
+.ideal-steps{background:var(--panel);border:1px solid var(--border);padding:16px;margin-bottom:16px}
+.ideal-steps h3{color:var(--cyan);margin-bottom:8px;font-size:14px}
+.ideal-steps ol{padding-left:24px;color:var(--white);font-size:13px;line-height:1.6}
+.ideal-steps .explanation{color:var(--dim);font-size:12px;margin-top:8px;line-height:1.5}
+.cmd-history{background:var(--panel);border:1px solid var(--border);padding:16px;margin-bottom:16px}
+.cmd-history h3{color:var(--cyan);margin-bottom:8px;font-size:14px}
+.cmd-history .ch-line{color:var(--white);font-size:12px;line-height:1.5}
+.result-actions{text-align:center;margin-top:16px;display:flex;gap:12px;justify-content:center}
+.btn{background:transparent;border:1px solid var(--fg);color:var(--fg);padding:10px 24px;font-family:inherit;font-size:14px;cursor:pointer;transition:all .2s}
+.btn:hover{background:var(--fg);color:var(--bg)}
+.btn-dim{border-color:var(--border);color:var(--dim)}
+.btn-dim:hover{background:var(--border);color:var(--white)}
+/* Responsive */
+@media(max-width:600px){
+  html{font-size:13px}
+  .alert-banner{margin:4px;padding:8px 12px}
+  .status-bar{padding:4px 12px;gap:8px;font-size:11px}
+  .terminal-wrap{padding:4px 12px 0}
+  .input-row{padding:4px 12px 6px}
+  #select-screen{padding:12px}
+  .scenario-card{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<!-- SCREEN: Scenario Select -->
+<div id="select-screen" class="screen active">
+  <h1>ALERT RESPONSE ROLEPLAY</h1>
+  <div class="subtitle">Nagios監視アラート対応トレーニング — ターミナルでコマンドを打って障害を復旧せよ</div>
+  <div class="scenario-list" id="scenario-list"></div>
+</div>
+
+<!-- SCREEN: Game -->
+<div id="game-screen" class="screen">
+  <div class="alert-banner" id="alert-banner">
+    <div class="alert-label" id="alert-label"></div>
+    <div class="alert-host" id="alert-host"></div>
+    <div class="alert-msg" id="alert-msg"></div>
+  </div>
+  <div class="status-bar">
+    <span><span class="st-label">TIME </span><span class="st-val" id="st-time">00:00</span></span>
+    <span><span class="st-label">CMD </span><span class="st-val" id="st-cmd">0</span></span>
+    <span><span class="st-label">HINT </span><span class="st-val" id="st-hint">3</span></span>
+    <span><span class="st-label">HOST </span><span class="st-val" id="st-host">local</span></span>
+  </div>
+  <div class="terminal-wrap" id="terminal"></div>
+  <div class="input-row">
+    <span class="prompt-text" id="prompt-text">user@local:~$ </span>
+    <input type="text" id="cmd-input" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+  </div>
+</div>
+
+<!-- SCREEN: Result -->
+<div id="result-screen" class="screen">
+  <div class="result-box" id="result-box"></div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// SCENARIOS
+// ═══════════════════════════════════════════════════════════════
+const SCENARIOS = [
+{
+  id: 1,
+  title: 'CPU高騰 — stress-ng暴走',
+  host: 'alpine-vm',
+  difficulty: 'Easy',
+  desc: 'alpine-vm の CPU Load が CRITICAL。原因を特定して復旧せよ。',
+  nagios: {
+    label: '***** Nagios Alert *****',
+    type: 'PROBLEM',
+    host: 'alpine-vm',
+    service: 'CPU Load',
+    state: 'CRITICAL',
+    output: 'CRITICAL - load average: 8.52, 6.31, 3.14 | load1=8.520;2.000;4.000;0; load5=6.310;2.000;4.000;0; load15=3.140;2.000;4.000;0;',
+    time: '2026-03-02 14:23:01 JST'
+  },
+  sshUser: 'root',
+  sshPort: '2222',
+  sshAddr: '127.0.0.1',
+  initState() {
+    return {
+      hostname: 'alpine-vm',
+      user: 'root',
+      home: '/root',
+      cwd: '/root',
+      uptime: ' 14:23:01 up 3 days, 7:42,  1 user,  load average: 8.52, 6.31, 3.14',
+      procs: [
+        { user:'root', pid:1, cpu:0.0, mem:0.1, vsz:1840, rss:1200, tty:'?', stat:'Ss', start:'Feb27', time:'0:03', cmd:'/sbin/init' },
+        { user:'root', pid:142, cpu:0.0, mem:0.2, vsz:4520, rss:2100, tty:'?', stat:'Ss', start:'Feb27', time:'0:01', cmd:'/usr/sbin/sshd' },
+        { user:'root', pid:168, cpu:0.0, mem:0.3, vsz:6780, rss:3200, tty:'?', stat:'Ss', start:'Feb27', time:'0:05', cmd:'nginx: master process /usr/sbin/nginx' },
+        { user:'nobody', pid:169, cpu:0.0, mem:0.2, vsz:7200, rss:2800, tty:'?', stat:'S', start:'Feb27', time:'0:12', cmd:'nginx: worker process' },
+        { user:'root', pid:892, cpu:98.2, mem:0.1, vsz:7400, rss:1100, tty:'?', stat:'R', start:'14:20', time:'2:45', cmd:'stress-ng --cpu 2 --timeout 0' },
+        { user:'root', pid:893, cpu:97.8, mem:0.1, vsz:7400, rss:1080, tty:'?', stat:'R', start:'14:20', time:'2:44', cmd:'[stress-ng-cpu]' },
+        { user:'root', pid:894, cpu:97.5, mem:0.1, vsz:7400, rss:1060, tty:'?', stat:'R', start:'14:20', time:'2:43', cmd:'[stress-ng-cpu]' },
+        { user:'nrpe', pid:200, cpu:0.0, mem:0.1, vsz:3200, rss:1400, tty:'?', stat:'Ss', start:'Feb27', time:'0:02', cmd:'/usr/sbin/nrpe -c /etc/nagios/nrpe.cfg -d' },
+      ],
+      fs: { '/': { size:'2.0G', used:'680M', avail:'1.2G', pct:'36%', mount:'/' },
+            '/tmp': { size:'64M', used:'4K', avail:'64M', pct:'0%', mount:'/tmp' } },
+      mem: { total:460, used:128, free:112, shared:4, buff:220, avail:312, swapTotal:0, swapUsed:0, swapFree:0 },
+      services: { nginx:'started', sshd:'started', nrpe:'started' },
+      files: {
+        '/var/log/messages': 'Feb 27 07:42:01 alpine-vm syslog: syslogd started\nMar  2 14:20:05 alpine-vm root: stress-ng started via cron job\nMar  2 14:20:06 alpine-vm kernel: CPU: high utilization detected',
+        '/var/log/nginx/error.log': '2026/03/01 12:00:01 [notice] 168#168: signal process started',
+        '/var/log/nginx/access.log': '127.0.0.1 - - [02/Mar/2026:14:15:01 +0900] "GET /health HTTP/1.1" 200 2',
+        '/root': ['sim/', '.ash_history'],
+        '/root/sim': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
+        '/root/sim/stress-test.sh': '#!/bin/sh\nstress-ng --cpu 2 --timeout 0 &',
+        '/tmp': []
+      },
+      resolved: false,
+      checkResolution(state) {
+        const stressAlive = state.procs.some(p => p.cmd.includes('stress-ng') && !p.killed);
+        return !stressAlive;
+      },
+      idealTime: 60,
+      idealCmds: 5,
+      idealSteps: [
+        'ssh -p 2222 root@127.0.0.1 でalpine-vmに接続',
+        'uptime で負荷状況を確認',
+        'ps aux | grep stress でCPUを消費しているプロセスを特定',
+        'killall stress-ng で暴走プロセスを停止',
+        'uptime で負荷の低下を確認'
+      ],
+      explanation: 'stress-ngはCPUストレステストツールです。--timeout 0 で無限実行されており、2コアのCPUを100%使い切っていました。killallで全stress-ngプロセスを一括停止するのが最も効率的です。',
+      hints: [
+        'まず ssh でホストに接続し、uptime でload averageを確認してみましょう',
+        'ps aux で全プロセスを確認し、CPU使用率が高いプロセスを探しましょう（grep も使えます）',
+        'stress-ng が原因です。killall stress-ng で停止できます'
+      ]
+    };
+  }
+},
+{
+  id: 2,
+  title: 'ディスク逼迫 — 巨大ログファイル',
+  host: 'alpine-vm',
+  difficulty: 'Easy',
+  desc: 'alpine-vm の Disk Usage が CRITICAL。原因を調査して空き容量を回復せよ。',
+  nagios: {
+    label: '***** Nagios Alert *****',
+    type: 'PROBLEM',
+    host: 'alpine-vm',
+    service: 'Disk Usage',
+    state: 'CRITICAL',
+    output: 'DISK CRITICAL - /: 94% used (1.88G/2.0G) - free space: 120M',
+    time: '2026-03-02 15:10:22 JST'
+  },
+  sshUser: 'root',
+  sshPort: '2222',
+  sshAddr: '127.0.0.1',
+  initState() {
+    return {
+      hostname: 'alpine-vm',
+      user: 'root',
+      home: '/root',
+      cwd: '/root',
+      uptime: ' 15:10:22 up 3 days, 8:29,  1 user,  load average: 0.12, 0.08, 0.05',
+      procs: [
+        { user:'root', pid:1, cpu:0.0, mem:0.1, vsz:1840, rss:1200, tty:'?', stat:'Ss', start:'Feb27', time:'0:03', cmd:'/sbin/init' },
+        { user:'root', pid:142, cpu:0.0, mem:0.2, vsz:4520, rss:2100, tty:'?', stat:'Ss', start:'Feb27', time:'0:01', cmd:'/usr/sbin/sshd' },
+        { user:'root', pid:168, cpu:0.0, mem:0.3, vsz:6780, rss:3200, tty:'?', stat:'Ss', start:'Feb27', time:'0:05', cmd:'nginx: master process /usr/sbin/nginx' },
+        { user:'nobody', pid:169, cpu:0.0, mem:0.2, vsz:7200, rss:2800, tty:'?', stat:'S', start:'Feb27', time:'0:12', cmd:'nginx: worker process' },
+        { user:'nrpe', pid:200, cpu:0.0, mem:0.1, vsz:3200, rss:1400, tty:'?', stat:'Ss', start:'Feb27', time:'0:02', cmd:'/usr/sbin/nrpe -c /etc/nagios/nrpe.cfg -d' },
+      ],
+      fs: { '/': { size:'2.0G', used:'1.88G', avail:'120M', pct:'94%', mount:'/' },
+            '/tmp': { size:'2.0G', used:'1.7G', avail:'300M', pct:'85%', mount:'/' } },
+      mem: { total:460, used:98, free:142, shared:4, buff:220, avail:342, swapTotal:0, swapUsed:0, swapFree:0 },
+      services: { nginx:'started', sshd:'started', nrpe:'started' },
+      files: {
+        '/var/log/messages': 'Mar  2 15:08:01 alpine-vm cron: disk usage warning\nMar  2 15:10:01 alpine-vm nagios-nrpe: DISK CRITICAL',
+        '/var/log/nginx/error.log': '2026/03/02 15:00:01 [notice] 168#168: signal process started',
+        '/tmp': ['debug-output.log'],
+        '/tmp/debug-output.log': '[Simulated content: 1.7GB debug log file - repeated stack traces and verbose output from a debugging session that was left running]',
+        '/root': ['sim/', '.ash_history'],
+        '/root/sim': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
+      },
+      duResults: {
+        '/tmp/*': '1.7G\t/tmp/debug-output.log',
+        '/tmp': '1.7G\t/tmp',
+        '/var/log/*': '12M\t/var/log/messages\n4K\t/var/log/nginx',
+      },
+      bigFileRemoved: false,
+      resolved: false,
+      checkResolution(state) { return state.bigFileRemoved; },
+      idealTime: 90,
+      idealCmds: 6,
+      idealSteps: [
+        'ssh -p 2222 root@127.0.0.1 でalpine-vmに接続',
+        'df -h でディスク使用状況を確認',
+        'du -sh /tmp/* で大きなファイルを探す',
+        'ls -lh /tmp/debug-output.log でファイルサイズを確認',
+        'rm /tmp/debug-output.log で巨大ログを削除',
+        'df -h で空き容量の回復を確認'
+      ],
+      explanation: '/tmp に 1.7GB の debug-output.log が放置されていました。デバッグセッションの出力が無制限にログされた結果です。rm で削除すれば即座にディスク容量が回復します。定期的な /tmp クリーンアップの仕組みが必要です。',
+      hints: [
+        'df -h でどのパーティションが逼迫しているか確認しましょう',
+        'du -sh /tmp/* や du -sh /var/log/* で大きなファイルを探しましょう',
+        '/tmp/debug-output.log が1.7GBあります。rm /tmp/debug-output.log で削除しましょう'
+      ]
+    };
+  }
+},
+{
+  id: 3,
+  title: 'nginx停止 — サービスダウン',
+  host: 'alpine-vm',
+  difficulty: 'Medium',
+  desc: 'alpine-vm の HTTP チェックが CRITICAL。Webサーバーを復旧せよ。',
+  nagios: {
+    label: '***** Nagios Alert *****',
+    type: 'PROBLEM',
+    host: 'alpine-vm',
+    service: 'HTTP',
+    state: 'CRITICAL',
+    output: 'HTTP CRITICAL - Connection refused - connect to address 127.0.0.1 and target port 8081: Connection refused',
+    time: '2026-03-02 16:05:33 JST'
+  },
+  sshUser: 'root',
+  sshPort: '2222',
+  sshAddr: '127.0.0.1',
+  initState() {
+    return {
+      hostname: 'alpine-vm',
+      user: 'root',
+      home: '/root',
+      cwd: '/root',
+      uptime: ' 16:05:33 up 3 days, 9:24,  1 user,  load average: 0.05, 0.03, 0.01',
+      procs: [
+        { user:'root', pid:1, cpu:0.0, mem:0.1, vsz:1840, rss:1200, tty:'?', stat:'Ss', start:'Feb27', time:'0:03', cmd:'/sbin/init' },
+        { user:'root', pid:142, cpu:0.0, mem:0.2, vsz:4520, rss:2100, tty:'?', stat:'Ss', start:'Feb27', time:'0:01', cmd:'/usr/sbin/sshd' },
+        { user:'nrpe', pid:200, cpu:0.0, mem:0.1, vsz:3200, rss:1400, tty:'?', stat:'Ss', start:'Feb27', time:'0:02', cmd:'/usr/sbin/nrpe -c /etc/nagios/nrpe.cfg -d' },
+      ],
+      fs: { '/': { size:'2.0G', used:'680M', avail:'1.2G', pct:'36%', mount:'/' } },
+      mem: { total:460, used:82, free:158, shared:4, buff:220, avail:358, swapTotal:0, swapUsed:0, swapFree:0 },
+      services: { nginx:'stopped', sshd:'started', nrpe:'started' },
+      files: {
+        '/var/log/messages': 'Mar  2 16:02:15 alpine-vm nginx: caught SIGTERM, shutting down\nMar  2 16:02:15 alpine-vm nginx: process exited with code 0',
+        '/var/log/nginx/error.log': '2026/03/02 16:02:15 [notice] 168#168: signal 15 (SIGTERM) received from 1, exiting\n2026/03/02 16:02:15 [notice] 168#168: worker process 169 exited with code 0\n2026/03/02 16:02:15 [notice] 168#168: exit',
+        '/var/log/nginx/access.log': '127.0.0.1 - - [02/Mar/2026:16:00:01 +0900] "GET /health HTTP/1.1" 200 2',
+        '/root': ['sim/', '.ash_history'],
+        '/root/sim': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
+        '/etc/nginx/nginx.conf': 'worker_processes auto;\nevents { worker_connections 128; }\nhttp {\n  server {\n    listen 8081;\n    location /health { return 200 "OK"; }\n    location / { root /var/www/html; }\n  }\n}',
+      },
+      resolved: false,
+      checkResolution(state) { return state.services.nginx === 'started'; },
+      idealTime: 60,
+      idealCmds: 5,
+      idealSteps: [
+        'ssh -p 2222 root@127.0.0.1 でalpine-vmに接続',
+        'rc-service nginx status でnginxの状態を確認',
+        'ps aux | grep nginx でnginxプロセスが存在しないことを確認',
+        'tail /var/log/nginx/error.log でログからSIGTERMを確認',
+        'rc-service nginx start でnginxを起動'
+      ],
+      explanation: 'nginxがSIGTERMを受けて正常終了していました。Alpine LinuxではOpenRCを使うため、rc-service nginx start で起動します（systemctl ではありません）。ログを確認して意図的停止か異常停止かを判断することが重要です。',
+      hints: [
+        'rc-service nginx status でサービスの状態を確認しましょう（Alpine Linuxです）',
+        'ps aux | grep nginx でプロセスの有無を確認し、ログも見てみましょう',
+        'rc-service nginx start で起動できます（Alpine Linuxでは systemctl ではなく rc-service です）'
+      ]
+    };
+  }
+},
+{
+  id: 4,
+  title: 'メモリ枯渇 — リークプロセス',
+  host: 'sentinel',
+  difficulty: 'Medium',
+  desc: 'sentinel の Memory Usage が CRITICAL。メモリを消費しているプロセスを特定して対処せよ。',
+  nagios: {
+    label: '***** Nagios Alert *****',
+    type: 'PROBLEM',
+    host: 'sentinel',
+    service: 'Memory Usage',
+    state: 'CRITICAL',
+    output: 'MEMORY CRITICAL - 93.2% used (932/1000MB) | mem_used_pct=93.2%;80;90;0;100',
+    time: '2026-03-02 17:30:45 JST'
+  },
+  sshUser: 'niko',
+  sshPort: '22',
+  sshAddr: '100.94.48.25',
+  initState() {
+    return {
+      hostname: 'sentinel',
+      user: 'niko',
+      home: '/home/niko',
+      cwd: '/home/niko',
+      uptime: ' 17:30:45 up 14 days, 2:15,  1 user,  load average: 0.88, 0.72, 0.45',
+      procs: [
+        { user:'root', pid:1, cpu:0.0, mem:0.1, vsz:16840, rss:11200, tty:'?', stat:'Ss', start:'Feb16', time:'0:12', cmd:'/sbin/init' },
+        { user:'root', pid:412, cpu:0.0, mem:0.2, vsz:15400, rss:5400, tty:'?', stat:'Ss', start:'Feb16', time:'0:05', cmd:'/usr/sbin/sshd -D' },
+        { user:'niko', pid:1580, cpu:0.2, mem:1.8, vsz:52000, rss:18400, tty:'?', stat:'Ssl', start:'Feb16', time:'5:22', cmd:'/usr/sbin/tailscaled --state=/var/lib/tailscale/tailscaled.state' },
+        { user:'niko', pid:2100, cpu:0.5, mem:2.4, vsz:780000, rss:24000, tty:'?', stat:'Ssl', start:'Feb20', time:'12:30', cmd:'node /home/niko/niko-watchdog/watchdog.js' },
+        { user:'niko', pid:5432, cpu:12.3, mem:78.0, vsz:820000, rss:780000, tty:'?', stat:'Sl', start:'17:15', time:'1:52', cmd:'node /home/niko/leak-test.js' },
+        { user:'root', pid:310, cpu:0.0, mem:0.3, vsz:18200, rss:6800, tty:'?', stat:'Ss', start:'Feb16', time:'0:08', cmd:'/lib/systemd/systemd-journald' },
+      ],
+      fs: { '/': { size:'46G', used:'8.2G', avail:'36G', pct:'19%', mount:'/' } },
+      mem: { total:1000, used:932, free:18, shared:12, buff:50, avail:38, swapTotal:2048, swapUsed:1200, swapFree:848 },
+      services: { 'niko-watchdog':'active', sshd:'active', tailscaled:'active' },
+      files: {
+        '/home/niko': ['niko-watchdog/', 'leak-test.js', '.bashrc'],
+        '/home/niko/leak-test.js': 'const data = [];\nsetInterval(() => {\n  // Memory leak: pushing 1MB every second\n  data.push(Buffer.alloc(1024 * 1024));\n  console.log(`Allocated: ${data.length}MB`);\n}, 1000);',
+        '/var/log/syslog': 'Mar  2 17:25:01 sentinel kernel: [OOM warning] low memory condition\nMar  2 17:28:33 sentinel systemd: niko-watchdog.service: memory pressure detected\nMar  2 17:30:01 sentinel kernel: [OOM warning] swap usage high',
+        '/home/niko/niko-watchdog': ['watchdog.js', 'package.json', '.env', 'dashboard.html'],
+      },
+      resolved: false,
+      checkResolution(state) {
+        const leakAlive = state.procs.some(p => p.cmd.includes('leak-test.js') && !p.killed);
+        return !leakAlive;
+      },
+      idealTime: 90,
+      idealCmds: 6,
+      idealSteps: [
+        'ssh niko@100.94.48.25 でsentinelに接続',
+        'free -m でメモリ使用状況を確認',
+        'ps aux --sort=-%mem | head でメモリ消費トップを確認',
+        'cat /home/niko/leak-test.js でリークの原因コードを確認',
+        'kill 5432 でリークプロセスを停止',
+        'free -m でメモリ回復を確認'
+      ],
+      explanation: 'leak-test.js が1秒ごとに1MBのBufferを配列に追加し続けるメモリリークを起こしていました。780MBまで膨張し、1GBしかないsentinelのメモリをほぼ使い切っていました。kill でプロセスを停止すれば即座にメモリが解放されます。OOM Killerが発動する前に対処することが重要です。',
+      hints: [
+        'free -m でメモリの使用状況を確認しましょう',
+        'ps aux --sort=-%mem | head でメモリを大量に使っているプロセスを探しましょう',
+        'PID 5432 の leak-test.js が780MB使っています。kill 5432 で停止しましょう'
+      ]
+    };
+  }
+},
+{
+  id: 5,
+  title: 'niko-appクラッシュ — サービス停止',
+  host: 'minipc',
+  difficulty: 'Hard',
+  desc: 'minipc の niko-app が異常停止。サービスを調査して復旧せよ。',
+  nagios: {
+    label: '***** Nagios Alert *****',
+    type: 'PROBLEM',
+    host: 'minipc',
+    service: 'niko-app',
+    state: 'CRITICAL',
+    output: 'HTTP CRITICAL - Connection refused - connect to address 100.85.53.125 and target port 3939: Connection refused',
+    time: '2026-03-02 18:45:10 JST'
+  },
+  sshUser: 'niko',
+  sshPort: '22',
+  sshAddr: '100.85.53.125',
+  initState() {
+    return {
+      hostname: 'minipc',
+      user: 'niko',
+      home: '/home/niko',
+      cwd: '/home/niko',
+      uptime: ' 18:45:10 up 21 days, 5:33,  1 user,  load average: 0.15, 0.22, 0.18',
+      procs: [
+        { user:'root', pid:1, cpu:0.0, mem:0.2, vsz:16840, rss:11200, tty:'?', stat:'Ss', start:'Feb09', time:'0:45', cmd:'/sbin/init' },
+        { user:'root', pid:385, cpu:0.0, mem:0.3, vsz:15400, rss:5400, tty:'?', stat:'Ss', start:'Feb09', time:'0:12', cmd:'/usr/sbin/sshd -D' },
+        { user:'niko', pid:1200, cpu:0.1, mem:1.2, vsz:52000, rss:18400, tty:'?', stat:'Ssl', start:'Feb09', time:'8:30', cmd:'/usr/sbin/tailscaled' },
+        { user:'root', pid:290, cpu:0.0, mem:0.3, vsz:18200, rss:6800, tty:'?', stat:'Ss', start:'Feb09', time:'0:22', cmd:'/lib/systemd/systemd-journald' },
+        { user:'root', pid:450, cpu:0.3, mem:0.8, vsz:120000, rss:48000, tty:'?', stat:'Ssl', start:'Feb09', time:'2:15', cmd:'/usr/bin/dockerd' },
+      ],
+      fs: { '/': { size:'58G', used:'12G', avail:'43G', pct:'22%', mount:'/' } },
+      mem: { total:5837, used:1842, free:2105, shared:48, buff:1890, avail:3780, swapTotal:2048, swapUsed:128, swapFree:1920 },
+      services: {
+        'niko-app': 'failed',
+        'sshd': 'active',
+        'tailscaled': 'active',
+        'docker': 'active',
+      },
+      systemctl: {
+        'niko-app': {
+          status: `● niko-app.service - Niko App (Hono API Server)
+     Loaded: loaded (/etc/systemd/system/niko-app.service; enabled; preset: enabled)
+     Active: failed (Result: exit-code) since Mon 2026-03-02 18:44:55 JST; 15s ago
+    Process: 8821 ExecStart=/home/niko/.nvm/versions/node/v22.22.0/bin/node dist/index.js (code=exited, status=1/FAILURE)
+   Main PID: 8821 (code=exited, status=1/FAILURE)
+        CPU: 1.2s
+
+Mar 02 18:44:55 minipc systemd[1]: niko-app.service: Main process exited, code=exited, status=1/FAILURE
+Mar 02 18:44:55 minipc systemd[1]: niko-app.service: Failed with result 'exit-code'.`,
+          journal: `Mar 02 18:44:52 minipc niko-app[8821]: Server starting on port 3939...
+Mar 02 18:44:53 minipc niko-app[8821]: Loading embodiment server...
+Mar 02 18:44:54 minipc niko-app[8821]: Error: Cannot find module '/home/niko/niko-app/dist/index.js'
+Mar 02 18:44:54 minipc niko-app[8821]:     at Module._resolveFilename (node:internal/modules/cjs/loader:1138:15)
+Mar 02 18:44:54 minipc niko-app[8821]:     at Module._load (node:internal/modules/cjs/loader:989:27)
+Mar 02 18:44:55 minipc niko-app[8821]: Node.js process exited with code 1
+Mar 02 18:44:55 minipc systemd[1]: niko-app.service: Main process exited, code=exited, status=1/FAILURE`
+        }
+      },
+      files: {
+        '/home/niko': ['niko-app/', 'nagios-lab/', 'edge-tts-venv/', '.bashrc'],
+        '/home/niko/niko-app': ['src/', 'package.json', 'tsconfig.json', '.env', 'node_modules/'],
+        '/home/niko/niko-app/src': ['index.ts', 'routes/', 'camera/', 'embodiment/'],
+        '/home/niko/niko-app/dist': [],
+        '/home/niko/niko-app/package.json': '{\n  "name": "niko-app",\n  "scripts": {\n    "build": "tsc",\n    "start": "node dist/index.js",\n    "dev": "tsx src/index.ts"\n  }\n}',
+        '/var/log/syslog': 'Mar  2 18:40:01 minipc niko-app[8800]: rsync deploy received\nMar  2 18:42:30 minipc niko-app[8800]: build started\nMar  2 18:44:50 minipc systemd[1]: Stopping niko-app.service...\nMar  2 18:44:52 minipc systemd[1]: Starting niko-app.service...\nMar  2 18:44:55 minipc systemd[1]: niko-app.service: Failed with result \'exit-code\'.',
+      },
+      needsBuild: true,
+      rebuilt: false,
+      resolved: false,
+      checkResolution(state) { return state.services['niko-app'] === 'active'; },
+      idealTime: 120,
+      idealCmds: 8,
+      idealSteps: [
+        'ssh niko@100.85.53.125 でminipcに接続',
+        'systemctl status niko-app でサービス状態を確認',
+        'journalctl -u niko-app -n 20 でエラーログを確認',
+        'ls /home/niko/niko-app/dist/ でdistディレクトリが空なのを確認',
+        'cat /home/niko/niko-app/package.json でビルドコマンドを確認',
+        'cd /home/niko/niko-app && npm run build でTypeScriptをビルド',
+        'sudo systemctl restart niko-app でサービスを再起動',
+        'systemctl status niko-app で復旧を確認'
+      ],
+      explanation: 'rsyncデプロイ後にdist/ディレクトリが空（ビルド成果物がない）状態でサービスが再起動され、"Cannot find module dist/index.js" でクラッシュしていました。TypeScriptプロジェクトなので npm run build で dist/ にコンパイルしてからサービスを再起動する必要があります。デプロイスクリプトにビルドステップが含まれているか確認が必要です。',
+      hints: [
+        'systemctl status niko-app でサービスの状態を確認しましょう',
+        'journalctl で "Cannot find module dist/index.js" が見えるはず。ls /home/niko/niko-app/dist/ を確認しましょう',
+        'dist/ が空です。cd /home/niko/niko-app && npm run build してから sudo systemctl restart niko-app しましょう'
+      ]
+    };
+  }
+}
+];
+
+// ═══════════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════════
+let G = {
+  scenario: null,
+  state: null,
+  connected: false,
+  startTime: 0,
+  cmdCount: 0,
+  hintCount: 0,
+  hintsUsed: 0,
+  cmdHistory: [],
+  inputHistory: [],
+  inputHistoryIdx: -1,
+  timerInterval: null,
+  investigationChecks: { load:false, process:false, disk:false, memory:false, log:false, service:false },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+  if (id === 'game-screen') $('cmd-input').focus();
+}
+
+function appendLine(text, cls='output') {
+  const div = document.createElement('div');
+  div.className = 'term-line ' + cls;
+  div.textContent = text;
+  $('terminal').appendChild(div);
+  $('terminal').scrollTop = $('terminal').scrollHeight;
+}
+
+function appendLines(text, cls='output') {
+  text.split('\n').forEach(line => appendLine(line, cls));
+}
+
+function updatePrompt() {
+  if (!G.connected) {
+    $('prompt-text').textContent = 'user@local:~$ ';
+    $('st-host').textContent = 'local';
+  } else {
+    const s = G.state;
+    const sym = s.user === 'root' ? '#' : '$';
+    const dir = s.cwd === s.home ? '~' : s.cwd.split('/').pop() || '/';
+    $('prompt-text').textContent = `${s.user}@${s.hostname}:${dir}${sym} `;
+    $('st-host').textContent = s.hostname;
+  }
+}
+
+function updateStatus() {
+  const elapsed = Math.floor((Date.now() - G.startTime) / 1000);
+  const min = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const sec = String(elapsed % 60).padStart(2, '0');
+  $('st-time').textContent = `${min}:${sec}`;
+  $('st-cmd').textContent = G.cmdCount;
+  $('st-hint').textContent = 3 - G.hintsUsed;
+}
+
+function getBestScores() {
+  try { return JSON.parse(localStorage.getItem('alert-roleplay-scores') || '{}'); }
+  catch { return {}; }
+}
+function saveBestScore(scenarioId, score) {
+  const scores = getBestScores();
+  if (!scores[scenarioId] || score > scores[scenarioId]) {
+    scores[scenarioId] = score;
+    localStorage.setItem('alert-roleplay-scores', JSON.stringify(scores));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCENARIO SELECT
+// ═══════════════════════════════════════════════════════════════
+function renderScenarioList() {
+  const list = $('scenario-list');
+  const best = getBestScores();
+  list.innerHTML = '';
+  SCENARIOS.forEach(sc => {
+    const card = document.createElement('div');
+    card.className = 'scenario-card';
+    const diffCls = sc.difficulty === 'Easy' ? 'diff-easy' : sc.difficulty === 'Medium' ? 'diff-med' : 'diff-hard';
+    let bestHtml = '';
+    if (best[sc.id]) {
+      const grade = getGrade(best[sc.id]);
+      bestHtml = `<div class="best-score">BEST: ${best[sc.id]}pt (${grade})</div>`;
+    }
+    card.innerHTML = `
+      <div class="sc-num">SCENARIO ${sc.id}</div>
+      <div class="sc-title">${sc.title}</div>
+      <div class="sc-host">Host: ${sc.host}</div>
+      <div class="sc-desc">${sc.desc}</div>
+      <div class="sc-diff ${diffCls}">${sc.difficulty}</div>
+      ${bestHtml}
+    `;
+    card.onclick = () => startGame(sc);
+    list.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GAME START
+// ═══════════════════════════════════════════════════════════════
+function startGame(scenario) {
+  G.scenario = scenario;
+  G.state = scenario.initState();
+  G.connected = false;
+  G.startTime = Date.now();
+  G.cmdCount = 0;
+  G.hintsUsed = 0;
+  G.hintCount = 0;
+  G.cmdHistory = [];
+  G.inputHistory = [];
+  G.inputHistoryIdx = -1;
+  G.investigationChecks = { load:false, process:false, disk:false, memory:false, log:false, service:false };
+
+  $('terminal').innerHTML = '';
+  $('alert-label').textContent = `${scenario.nagios.label}  [${scenario.nagios.type}]`;
+  $('alert-host').textContent = `Host: ${scenario.nagios.host} / Service: ${scenario.nagios.service} / State: ${scenario.nagios.state}`;
+  $('alert-msg').textContent = scenario.nagios.output;
+
+  appendLine(`[${scenario.nagios.time}] Nagios Alert Received`, 'error');
+  appendLine(`${scenario.nagios.service} on ${scenario.nagios.host} is ${scenario.nagios.state}`, 'error');
+  appendLine('', 'output');
+  appendLine('ホストに接続して障害を調査・復旧してください。', 'info');
+  appendLine('help でコマンド一覧、hint でヒントを表示できます。', 'info');
+  appendLine('', 'output');
+
+  updatePrompt();
+  updateStatus();
+  G.timerInterval = setInterval(updateStatus, 1000);
+
+  showScreen('game-screen');
+  $('cmd-input').value = '';
+  $('cmd-input').focus();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMMAND PARSER
+// ═══════════════════════════════════════════════════════════════
+function tokenize(input) {
+  const tokens = [];
+  let current = '';
+  let inQuote = false;
+  let quoteChar = '';
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (inQuote) {
+      if (ch === quoteChar) { inQuote = false; }
+      else { current += ch; }
+    } else if (ch === '"' || ch === "'") {
+      inQuote = true; quoteChar = ch;
+    } else if (ch === ' ' || ch === '\t') {
+      if (current) { tokens.push(current); current = ''; }
+    } else {
+      current += ch;
+    }
+  }
+  if (current) tokens.push(current);
+  return tokens;
+}
+
+function splitPipes(input) {
+  return input.split('|').map(s => s.trim()).filter(Boolean);
+}
+
+function applyPipeFilter(output, filterCmd) {
+  const tokens = tokenize(filterCmd);
+  const cmd = tokens[0];
+  const lines = output.split('\n');
+
+  if (cmd === 'grep') {
+    const caseInsensitive = tokens.includes('-i');
+    const invert = tokens.includes('-v');
+    const pat = tokens.filter(t => !t.startsWith('-')).slice(1).join(' ');
+    if (!pat) return output;
+    return lines.filter(line => {
+      const hay = caseInsensitive ? line.toLowerCase() : line;
+      const needle = caseInsensitive ? pat.toLowerCase() : pat;
+      const match = hay.includes(needle);
+      return invert ? !match : match;
+    }).join('\n');
+  }
+  if (cmd === 'head') {
+    let n = 10;
+    const nIdx = tokens.indexOf('-n');
+    if (nIdx >= 0 && tokens[nIdx+1]) n = parseInt(tokens[nIdx+1]) || 10;
+    else if (tokens[1] && tokens[1].startsWith('-')) n = parseInt(tokens[1].slice(1)) || 10;
+    return lines.slice(0, n).join('\n');
+  }
+  if (cmd === 'tail') {
+    let n = 10;
+    const nIdx = tokens.indexOf('-n');
+    if (nIdx >= 0 && tokens[nIdx+1]) n = parseInt(tokens[nIdx+1]) || 10;
+    else if (tokens[1] && tokens[1].startsWith('-')) n = parseInt(tokens[1].slice(1)) || 10;
+    return lines.slice(-n).join('\n');
+  }
+  if (cmd === 'wc') {
+    if (tokens.includes('-l')) return String(lines.length);
+    return `  ${lines.length}  ${lines.reduce((a,l)=>a+l.split(/\s+/).filter(Boolean).length,0)}  ${output.length}`;
+  }
+  if (cmd === 'sort') {
+    const reverse = tokens.includes('-r') || tokens.includes('-rh');
+    const human = tokens.includes('-h') || tokens.includes('-rh');
+    const sorted = [...lines].sort((a, b) => {
+      if (human) {
+        const na = parseHumanSize(a);
+        const nb = parseHumanSize(b);
+        return na - nb;
+      }
+      return a.localeCompare(b);
+    });
+    if (reverse) sorted.reverse();
+    return sorted.join('\n');
+  }
+  return output;
+}
+
+function parseHumanSize(s) {
+  const m = s.match(/([\d.]+)([KMGT]?)/i);
+  if (!m) return 0;
+  const n = parseFloat(m[1]);
+  const u = (m[2]||'').toUpperCase();
+  const mult = {K:1024, M:1024**2, G:1024**3, T:1024**4};
+  return n * (mult[u] || 1);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMMAND EXECUTION
+// ═══════════════════════════════════════════════════════════════
+function execCommand(rawInput) {
+  const input = rawInput.trim();
+  if (!input) return;
+
+  G.cmdCount++;
+  G.cmdHistory.push(input);
+  G.inputHistory.push(input);
+  G.inputHistoryIdx = G.inputHistory.length;
+
+  const promptStr = $('prompt-text').textContent;
+  appendLine(promptStr + input, 'prompt-line');
+
+  if (input === 'clear') {
+    $('terminal').innerHTML = '';
+    return;
+  }
+
+  // Handle && chaining
+  const chainedCmds = input.split('&&').map(s => s.trim()).filter(Boolean);
+  for (const singleCmd of chainedCmds) {
+    const pipes = splitPipes(singleCmd);
+    const mainCmd = pipes[0];
+    let output = execMain(mainCmd);
+
+    for (let i = 1; i < pipes.length; i++) {
+      if (output === null) break;
+      output = applyPipeFilter(output, pipes[i]);
+    }
+
+    if (output !== null && output !== undefined) {
+      if (output !== '') appendLines(output);
+    }
+  }
+
+  // Check resolution
+  if (G.connected && G.state.checkResolution(G.state)) {
+    if (!G.state.resolved) {
+      G.state.resolved = true;
+      appendLine('', 'output');
+      appendLine('=== 障害が復旧しました！ ===', 'success');
+      appendLine('exit で切断し、結果を確認しましょう。', 'info');
+    }
+  }
+}
+
+function execMain(input) {
+  const tokens = tokenize(input);
+  if (!tokens.length) return '';
+  const cmd = tokens[0];
+  const args = tokens.slice(1);
+
+  // Meta commands (always available)
+  if (cmd === 'help') return showHelp();
+  if (cmd === 'hint') return showHint();
+
+  // Local-only commands
+  if (!G.connected) {
+    if (cmd === 'ssh') return handleSSH(args);
+    if (cmd === 'exit') {
+      if (G.state.resolved) { endGame(); return null; }
+      appendLine('まだ障害が復旧していません。ssh でホストに接続してください。', 'info');
+      return null;
+    }
+    appendLine(`まずは ssh でホストに接続してください。例: ssh ${G.scenario.sshUser === 'root' ? '-p 2222 root@127.0.0.1' : G.scenario.sshUser + '@' + G.scenario.sshAddr}`, 'info');
+    return null;
+  }
+
+  // Connected commands
+  if (cmd === 'exit') {
+    G.connected = false;
+    appendLine(`Connection to ${G.state.hostname} closed.`, 'output');
+    updatePrompt();
+    if (G.state.resolved) {
+      appendLine('', 'output');
+      appendLine('復旧済みです。もう一度 exit でリザルト画面に進みます。', 'info');
+    }
+    return null;
+  }
+
+  return execRemote(cmd, args);
+}
+
+function handleSSH(args) {
+  let user = G.scenario.sshUser;
+  let port = G.scenario.sshPort;
+  let host = G.scenario.sshAddr;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '-p' && args[i+1]) { port = args[i+1]; i++; continue; }
+    if (args[i].includes('@')) {
+      const parts = args[i].split('@');
+      user = parts[0];
+      host = parts[1];
+    }
+  }
+
+  appendLine(`Connecting to ${host}:${port}...`, 'info');
+  G.connected = true;
+  updatePrompt();
+  appendLine(`Welcome to ${G.state.hostname}`, 'output');
+  appendLine('', 'output');
+  return null;
+}
+
+function execRemote(cmd, args) {
+  const s = G.state;
+
+  switch (cmd) {
+    case 'uptime':
+      G.investigationChecks.load = true;
+      return s.uptime;
+
+    case 'top': {
+      G.investigationChecks.load = true;
+      G.investigationChecks.process = true;
+      let out = `top - ${s.uptime.trim().split(',')[0].split('up')[0].trim()} up ...\n`;
+      out += `Tasks: ${s.procs.length} total\n`;
+      const memPct = ((s.mem.used / s.mem.total) * 100).toFixed(1);
+      out += `%Cpu(s): ${s.procs.reduce((a,p)=>a+p.cpu,0).toFixed(1)} us\n`;
+      out += `MiB Mem: ${s.mem.total} total, ${s.mem.free} free, ${s.mem.used} used, ${s.mem.buff} buff/cache\n\n`;
+      out += fmtPsHeader();
+      const sorted = [...s.procs].filter(p => !p.killed).sort((a,b) => b.cpu - a.cpu);
+      sorted.forEach(p => { out += '\n' + fmtPsLine(p); });
+      return out;
+    }
+
+    case 'ps': {
+      G.investigationChecks.process = true;
+      let out = fmtPsHeader();
+      const procs = s.procs.filter(p => !p.killed);
+      procs.forEach(p => { out += '\n' + fmtPsLine(p); });
+      if (args.includes('--sort=-%cpu')) {
+        const lines = out.split('\n');
+        const header = lines[0];
+        const body = lines.slice(1).sort((a,b) => {
+          const ca = parseFloat(a.split(/\s+/)[2]) || 0;
+          const cb = parseFloat(b.split(/\s+/)[2]) || 0;
+          return cb - ca;
+        });
+        return [header, ...body].join('\n');
+      }
+      if (args.includes('--sort=-%mem')) {
+        const lines = out.split('\n');
+        const header = lines[0];
+        const body = lines.slice(1).sort((a,b) => {
+          const ca = parseFloat(a.split(/\s+/)[3]) || 0;
+          const cb = parseFloat(b.split(/\s+/)[3]) || 0;
+          return cb - ca;
+        });
+        return [header, ...body].join('\n');
+      }
+      return out;
+    }
+
+    case 'df': {
+      G.investigationChecks.disk = true;
+      let out = 'Filesystem      Size  Used Avail Use% Mounted on';
+      for (const [mount, info] of Object.entries(s.fs)) {
+        out += `\n/dev/sda1       ${info.size}  ${info.used}  ${info.avail}  ${info.pct}  ${info.mount}`;
+      }
+      return out;
+    }
+
+    case 'free': {
+      G.investigationChecks.memory = true;
+      const m = s.mem;
+      let out = '              total        used        free      shared  buff/cache   available\n';
+      out += `Mem:          ${pad(m.total,6)}      ${pad(m.used,6)}      ${pad(m.free,6)}      ${pad(m.shared,6)}      ${pad(m.buff,6)}      ${pad(m.avail,6)}`;
+      if (m.swapTotal > 0) {
+        out += `\nSwap:         ${pad(m.swapTotal,6)}      ${pad(m.swapUsed,6)}      ${pad(m.swapFree,6)}`;
+      }
+      return out;
+    }
+
+    case 'cat': {
+      G.investigationChecks.log = true;
+      const path = resolvePath(args[0]);
+      if (!path) return 'cat: missing operand';
+      const content = getFileContent(path);
+      if (content === null) return `cat: ${args[0]}: No such file or directory`;
+      if (Array.isArray(content)) return `cat: ${args[0]}: Is a directory`;
+      return content;
+    }
+
+    case 'tail': {
+      G.investigationChecks.log = true;
+      let n = 10;
+      let filePath = null;
+      for (let i = 0; i < args.length; i++) {
+        if (args[i] === '-n' && args[i+1]) { n = parseInt(args[i+1]) || 10; i++; }
+        else if (args[i] === '-f') { /* ignore */ }
+        else if (!args[i].startsWith('-')) { filePath = args[i]; }
+      }
+      if (!filePath) return 'tail: missing operand';
+      const p = resolvePath(filePath);
+      const content = getFileContent(p);
+      if (content === null) return `tail: ${filePath}: No such file or directory`;
+      if (Array.isArray(content)) return `tail: ${filePath}: Is a directory`;
+      const lines = content.split('\n');
+      return lines.slice(-n).join('\n');
+    }
+
+    case 'head': {
+      G.investigationChecks.log = true;
+      let n = 10;
+      let filePath = null;
+      for (let i = 0; i < args.length; i++) {
+        if (args[i] === '-n' && args[i+1]) { n = parseInt(args[i+1]) || 10; i++; }
+        else if (!args[i].startsWith('-')) { filePath = args[i]; }
+      }
+      if (!filePath) return 'head: missing operand';
+      const p = resolvePath(filePath);
+      const content = getFileContent(p);
+      if (content === null) return `head: ${filePath}: No such file or directory`;
+      if (Array.isArray(content)) return `head: ${filePath}: Is a directory`;
+      const lines = content.split('\n');
+      return lines.slice(0, n).join('\n');
+    }
+
+    case 'ls': {
+      let path = args.filter(a => !a.startsWith('-')).pop() || s.cwd;
+      const resolved = resolvePath(path);
+      const content = getFileContent(resolved);
+      if (content === null) return `ls: cannot access '${path}': No such file or directory`;
+      if (Array.isArray(content)) {
+        if (args.includes('-la') || args.includes('-lh') || (args.includes('-l') && args.includes('-h'))) {
+          return content.map(f => `drwxr-xr-x  2 ${s.user} ${s.user}  4096 Mar  2 14:00 ${f}`).join('\n') || '';
+        }
+        return content.join('  ') || '';
+      }
+      // It's a file
+      if (args.includes('-l') || args.includes('-la') || args.includes('-lh')) {
+        const size = content.length > 1000000 ? `${(content.length/1048576).toFixed(1)}M` : `${content.length}`;
+        return `-rw-r--r--  1 ${s.user} ${s.user}  ${size} Mar  2 14:00 ${path}`;
+      }
+      return path;
+    }
+
+    case 'du': {
+      G.investigationChecks.disk = true;
+      const path = args.filter(a => !a.startsWith('-')).pop() || s.cwd;
+      // Check for special du results (handles wildcards like /tmp/*)
+      if (s.duResults) {
+        for (const [key, val] of Object.entries(s.duResults)) {
+          if (path === key) return val;
+          // Wildcard: du -sh /tmp/* matches duResults['/tmp/*']
+          if (key.endsWith('/*') && path.endsWith('/*')) {
+            const keyBase = key.slice(0, -2);
+            const pathResolved = resolvePath(path.slice(0, -2));
+            if (pathResolved === keyBase) return val;
+          }
+          // Non-wildcard path match
+          const resolved = resolvePath(path);
+          if (resolved === key) return val;
+        }
+      }
+      const resolved = resolvePath(path.replace('/*',''));
+      const content = getFileContent(resolved);
+      if (content === null) return `du: cannot access '${path}': No such file or directory`;
+      if (Array.isArray(content)) return `4K\t${resolved}`;
+      return `${Math.ceil(content.length/1024)}K\t${resolved}`;
+    }
+
+    case 'pwd':
+      return s.cwd;
+
+    case 'whoami':
+      return s.user;
+
+    case 'hostname':
+      return s.hostname;
+
+    case 'date':
+      return G.scenario.nagios.time;
+
+    case 'cd': {
+      const target = args[0] || s.home;
+      const resolved = resolvePath(target);
+      const content = getFileContent(resolved);
+      if (content === null || !Array.isArray(content)) {
+        if (content === null) return `bash: cd: ${target}: No such file or directory`;
+        return `bash: cd: ${target}: Not a directory`;
+      }
+      s.cwd = resolved;
+      updatePrompt();
+      return '';
+    }
+
+    case 'kill': {
+      const pid = parseInt(args.filter(a => !a.startsWith('-'))[0]);
+      if (!pid) return 'kill: usage: kill [-s sigspec | -n signum | -sigspec] pid';
+      const proc = s.procs.find(p => p.pid === pid && !p.killed);
+      if (!proc) return `bash: kill: (${pid}) - No such process`;
+      proc.killed = true;
+      // Update memory if applicable
+      if (proc.mem > 10) {
+        const freedMem = Math.floor(s.mem.total * proc.mem / 100);
+        s.mem.used = Math.max(0, s.mem.used - freedMem);
+        s.mem.free += freedMem;
+        s.mem.avail += freedMem;
+        if (s.mem.swapUsed > 0) { s.mem.swapUsed = Math.max(0, s.mem.swapUsed - 400); s.mem.swapFree += 400; }
+      }
+      return '';
+    }
+
+    case 'killall': {
+      const name = args[0];
+      if (!name) return 'killall: usage: killall name';
+      const matching = s.procs.filter(p => p.cmd.includes(name) && !p.killed);
+      if (matching.length === 0) return `${name}: no process found`;
+      matching.forEach(p => { p.killed = true; });
+      return '';
+    }
+
+    case 'systemctl': {
+      G.investigationChecks.service = true;
+      const action = args[0];
+      const svcName = args[1];
+      if (!action) return 'systemctl: missing command';
+
+      if (action === 'status') {
+        if (!svcName) return 'systemctl: missing service name';
+        if (s.systemctl && s.systemctl[svcName]) {
+          return s.systemctl[svcName].status;
+        }
+        const st = s.services[svcName];
+        if (st === undefined) return `Unit ${svcName}.service could not be found.`;
+        return `● ${svcName}.service\n   Active: ${st === 'active' ? 'active (running)' : st === 'failed' ? 'failed' : 'inactive (dead)'}`;
+      }
+
+      if (action === 'restart') {
+        if (!svcName) return 'systemctl: missing service name';
+        if (s.user !== 'root') {
+          return `==== AUTHENTICATING FOR org.freedesktop.systemd1.manage-units ===\nPolkit authorization required. Use sudo.`;
+        }
+        if (svcName === 'niko-app' && s.needsBuild && !s.rebuilt) {
+          // Still fails if not built
+          s.services['niko-app'] = 'failed';
+          return `Job for niko-app.service failed because the control process exited with error code.\nSee "systemctl status niko-app.service" and "journalctl -xe" for details.`;
+        }
+        if (s.services[svcName] !== undefined) {
+          s.services[svcName] = 'active';
+          if (s.systemctl && s.systemctl[svcName]) {
+            s.systemctl[svcName].status = s.systemctl[svcName].status
+              .replace('failed (Result: exit-code)', 'active (running)')
+              .replace('Failed with result', 'Started');
+          }
+          return '';
+        }
+        return `Unit ${svcName}.service could not be found.`;
+      }
+
+      if (action === 'start') {
+        if (!svcName) return 'systemctl: missing service name';
+        if (s.user !== 'root') {
+          return `==== AUTHENTICATING FOR org.freedesktop.systemd1.manage-units ===\nPolkit authorization required. Use sudo.`;
+        }
+        if (svcName === 'niko-app' && s.needsBuild && !s.rebuilt) {
+          s.services['niko-app'] = 'failed';
+          return `Job for niko-app.service failed because the control process exited with error code.\nSee "systemctl status niko-app.service" and "journalctl -xe" for details.`;
+        }
+        if (s.services[svcName] !== undefined) {
+          s.services[svcName] = 'active';
+          if (s.systemctl && s.systemctl[svcName]) {
+            s.systemctl[svcName].status = s.systemctl[svcName].status
+              .replace('failed (Result: exit-code)', 'active (running)')
+              .replace('Failed with result', 'Started');
+          }
+          return '';
+        }
+        return `Unit ${svcName}.service could not be found.`;
+      }
+
+      if (action === 'is-active') {
+        if (!svcName) return 'systemctl: missing service name';
+        const st = s.services[svcName];
+        if (st === undefined) return 'inactive';
+        return st;
+      }
+
+      return `Unknown command: ${action}`;
+    }
+
+    case 'sudo': {
+      const subTokens = args;
+      if (!subTokens.length) return 'usage: sudo command';
+      // Re-run as if root
+      const origUser = s.user;
+      s.user = 'root';
+      const result = execRemote(subTokens[0], subTokens.slice(1));
+      s.user = origUser;
+      return result;
+    }
+
+    case 'journalctl': {
+      G.investigationChecks.log = true;
+      G.investigationChecks.service = true;
+      const uIdx = args.indexOf('-u');
+      let svcName = null;
+      if (uIdx >= 0) svcName = args[uIdx + 1];
+      let n = 20;
+      const nIdx = args.indexOf('-n');
+      if (nIdx >= 0) n = parseInt(args[nIdx + 1]) || 20;
+
+      if (svcName && s.systemctl && s.systemctl[svcName]) {
+        const journal = s.systemctl[svcName].journal;
+        const lines = journal.split('\n');
+        return lines.slice(-n).join('\n');
+      }
+      if (svcName && s.services[svcName] !== undefined) {
+        return `-- No entries for ${svcName} --`;
+      }
+      // journalctl -xe without -u: show recent system logs
+      if (args.includes('-xe') || args.includes('-e')) {
+        const syslog = s.files['/var/log/syslog'];
+        if (syslog && !Array.isArray(syslog)) {
+          return syslog;
+        }
+      }
+      return '-- Journal entries --';
+    }
+
+    case 'rc-service': {
+      G.investigationChecks.service = true;
+      const svcName = args[0];
+      const action = args[1];
+      if (!svcName || !action) return 'Usage: rc-service <service> <action>';
+
+      if (action === 'status') {
+        const st = s.services[svcName];
+        if (st === undefined) return `rc-service: service '${svcName}' does not exist`;
+        return `* status: ${st}`;
+      }
+      if (action === 'start') {
+        if (s.services[svcName] === undefined) return `rc-service: service '${svcName}' does not exist`;
+        s.services[svcName] = 'started';
+        // Add nginx procs back
+        if (svcName === 'nginx') {
+          s.procs.push(
+            { user:'root', pid:1168, cpu:0.0, mem:0.3, vsz:6780, rss:3200, tty:'?', stat:'Ss', start:'now', time:'0:00', cmd:'nginx: master process /usr/sbin/nginx' },
+            { user:'nobody', pid:1169, cpu:0.0, mem:0.2, vsz:7200, rss:2800, tty:'?', stat:'S', start:'now', time:'0:00', cmd:'nginx: worker process' }
+          );
+        }
+        return `* Starting ${svcName} ...  [ ok ]`;
+      }
+      if (action === 'restart') {
+        if (s.services[svcName] === undefined) return `rc-service: service '${svcName}' does not exist`;
+        s.services[svcName] = 'started';
+        return `* Restarting ${svcName} ...  [ ok ]`;
+      }
+      if (action === 'stop') {
+        if (s.services[svcName] === undefined) return `rc-service: service '${svcName}' does not exist`;
+        s.services[svcName] = 'stopped';
+        return `* Stopping ${svcName} ...  [ ok ]`;
+      }
+      return `rc-service: unknown action '${action}'`;
+    }
+
+    case 'rm': {
+      const target = args.filter(a => !a.startsWith('-')).pop();
+      if (!target) return 'rm: missing operand';
+      const resolved = resolvePath(target);
+      const content = getFileContent(resolved);
+      if (content === null) return `rm: cannot remove '${target}': No such file or directory`;
+      if (Array.isArray(content) && !args.includes('-rf') && !args.includes('-r')) return `rm: cannot remove '${target}': Is a directory`;
+      // Remove from parent
+      const parentPath = resolved.split('/').slice(0, -1).join('/') || '/';
+      const fileName = resolved.split('/').pop();
+      const parentContent = getFileContent(parentPath);
+      if (Array.isArray(parentContent)) {
+        const idx = parentContent.indexOf(fileName);
+        if (idx >= 0) parentContent.splice(idx, 1);
+        const idxSlash = parentContent.indexOf(fileName + '/');
+        if (idxSlash >= 0) parentContent.splice(idxSlash, 1);
+      }
+      delete s.files[resolved];
+      // Special: disk scenario
+      if (resolved === '/tmp/debug-output.log') {
+        s.bigFileRemoved = true;
+        s.fs['/'].used = '680M';
+        s.fs['/'].avail = '1.2G';
+        s.fs['/'].pct = '36%';
+      }
+      return '';
+    }
+
+    case 'npm': {
+      if (args[0] === 'run' && args[1] === 'build') {
+        if (s.needsBuild) {
+          appendLine('> tsc', 'output');
+          appendLine('', 'output');
+          s.rebuilt = true;
+          s.files['/home/niko/niko-app/dist'] = ['index.js', 'routes/', 'camera/', 'embodiment/'];
+          return 'Build completed successfully.';
+        }
+        return 'Build completed.';
+      }
+      return `npm: command not found or unsupported`;
+    }
+
+    case 'curl': {
+      return 'curl: (7) Failed to connect';
+    }
+
+    default:
+      return `bash: ${cmd}: command not found`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PATH RESOLUTION & FILE ACCESS
+// ═══════════════════════════════════════════════════════════════
+function resolvePath(p) {
+  if (!p) return G.state.cwd;
+  if (p.startsWith('~')) p = G.state.home + p.slice(1);
+  if (!p.startsWith('/')) p = G.state.cwd + '/' + p;
+  // Normalize
+  const parts = [];
+  p.split('/').forEach(part => {
+    if (part === '..') { parts.pop(); }
+    else if (part && part !== '.') { parts.push(part); }
+  });
+  return '/' + parts.join('/');
+}
+
+function getFileContent(path) {
+  const s = G.state;
+  if (s.files[path] !== undefined) return s.files[path];
+  // Check if path matches a file within a directory listing
+  const parent = path.split('/').slice(0, -1).join('/') || '/';
+  const name = path.split('/').pop();
+  const dir = s.files[parent];
+  if (Array.isArray(dir)) {
+    if (dir.includes(name) || dir.includes(name + '/')) {
+      // It's a listed entry but has no explicit content — treat as dir
+      return [];
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FORMATTING HELPERS
+// ═══════════════════════════════════════════════════════════════
+function fmtPsHeader() {
+  return 'USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND';
+}
+
+function fmtPsLine(p) {
+  return `${pad(p.user,8)} ${pad(p.pid,5)} ${pad(p.cpu.toFixed(1),4)} ${pad(p.mem.toFixed(1),4)} ${pad(p.vsz,6)} ${pad(p.rss,5)} ${pad(p.tty||'?',6)} ${pad(p.stat,4)} ${pad(p.start,7)} ${pad(p.time,5)} ${p.cmd}`;
+}
+
+function pad(val, width) {
+  const s = String(val);
+  return s.length >= width ? s : ' '.repeat(width - s.length) + s;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELP & HINTS
+// ═══════════════════════════════════════════════════════════════
+function showHelp() {
+  return `=== コマンド一覧 ===
+接続:  ssh [-p port] user@host   ホストに接続
+       exit                       切断 / ゲーム終了
+
+調査:  uptime                    負荷確認
+       top                       プロセス一覧（CPU順）
+       ps aux                    プロセス一覧
+       df -h                     ディスク使用状況
+       free -m                   メモリ使用状況
+       cat <file>                ファイル表示
+       tail [-n N] <file>        末尾表示
+       head [-n N] <file>        先頭表示
+       ls [-la] [path]           ディレクトリ一覧
+       du -sh <path>             ディスク使用量
+
+復旧:  kill <pid>                プロセス停止
+       killall <name>            名前でプロセス停止
+       systemctl status/restart  サービス管理
+       rc-service <svc> start    Alpine サービス管理
+       rm <file>                 ファイル削除
+       sudo <command>            root権限で実行
+
+パイプ: | grep <pattern>          フィルタ
+        | head [-n N]             先頭N行
+        | tail [-n N]             末尾N行
+        | wc -l                   行数カウント
+
+その他: pwd, whoami, hostname, date, cd, clear
+       help                      この画面
+       hint                      ヒント表示（-3pt/回、残り${3-G.hintsUsed}回）`;
+}
+
+function showHint() {
+  const hints = G.state.hints;
+  if (G.hintsUsed >= 3) return 'ヒントは全て使用済みです。';
+  const hint = hints[G.hintsUsed];
+  G.hintsUsed++;
+  G.hintCount++;
+  updateStatus();
+  return `💡 HINT ${G.hintsUsed}/3: ${hint}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCORING & RESULT
+// ═══════════════════════════════════════════════════════════════
+function getGrade(score) {
+  if (score >= 85) return 'S';
+  if (score >= 70) return 'A';
+  if (score >= 55) return 'B';
+  if (score >= 40) return 'C';
+  return 'D';
+}
+
+function calcScore() {
+  const elapsed = Math.floor((Date.now() - G.startTime) / 1000);
+  const s = G.state;
+
+  // Time score (40pt)
+  const idealTime = s.idealTime;
+  let timeScore;
+  if (elapsed <= idealTime) {
+    timeScore = 40;
+  } else {
+    const over = elapsed - idealTime;
+    timeScore = Math.max(0, 40 - Math.floor(over / 10) * 2);
+  }
+
+  // Command efficiency (30pt)
+  const idealCmds = s.idealCmds;
+  const ratio = idealCmds / Math.max(1, G.cmdCount);
+  let cmdScore = Math.min(30, Math.floor(ratio * 30));
+
+  // Investigation coverage (20pt)
+  const checks = G.investigationChecks;
+  const checkCount = Object.values(checks).filter(Boolean).length;
+  let investScore = Math.min(20, checkCount * 5);
+
+  // Hint penalty
+  const hintPenalty = G.hintsUsed * 3;
+
+  const total = Math.max(0, Math.min(100, timeScore + cmdScore + investScore - hintPenalty));
+
+  return {
+    total,
+    grade: getGrade(total),
+    elapsed,
+    timeScore,
+    cmdScore,
+    investScore,
+    hintPenalty,
+    cmdCount: G.cmdCount,
+    checks,
+    checkCount
+  };
+}
+
+function endGame() {
+  clearInterval(G.timerInterval);
+  const score = calcScore();
+  saveBestScore(G.scenario.id, score.total);
+
+  const s = G.state;
+  const gradeClass = `grade-${score.grade}`;
+
+  const checksLabels = {
+    load: '負荷確認 (uptime/top)',
+    process: 'プロセス確認 (ps/top)',
+    disk: 'ディスク確認 (df)',
+    memory: 'メモリ確認 (free)',
+    log: 'ログ確認 (cat/tail)',
+    service: 'サービス確認 (systemctl/rc-service)'
+  };
+
+  const checksHtml = Object.entries(score.checks)
+    .map(([k, v]) => `<div class="score-row"><span class="sr-label">${v ? '✓' : '✗'} ${checksLabels[k]}</span></div>`)
+    .join('');
+
+  const cmdHistHtml = G.cmdHistory
+    .map((c, i) => `<div class="ch-line">${i + 1}. ${c}</div>`)
+    .join('');
+
+  const stepsHtml = s.idealSteps.map(st => `<li>${st}</li>`).join('');
+
+  const min = String(Math.floor(score.elapsed / 60)).padStart(2, '0');
+  const sec = String(score.elapsed % 60).padStart(2, '0');
+
+  $('result-box').innerHTML = `
+    <h2>SCENARIO ${G.scenario.id}: ${G.scenario.title}</h2>
+    <div class="grade-display ${gradeClass}">${score.grade}</div>
+    <div class="score-total">${score.total} / 100</div>
+
+    <div class="score-breakdown">
+      <h3>スコア内訳</h3>
+      <div class="score-row"><span class="sr-label">時間 (${min}:${sec} / 理想 ${s.idealTime}s)</span><span class="sr-val">${score.timeScore}/40</span></div>
+      <div class="score-row"><span class="sr-label">コマンド効率 (${score.cmdCount}回 / 理想 ${s.idealCmds}回)</span><span class="sr-val">${score.cmdScore}/30</span></div>
+      <div class="score-row"><span class="sr-label">調査網羅性 (${score.checkCount}/6)</span><span class="sr-val">${score.investScore}/20</span></div>
+      ${score.hintPenalty > 0 ? `<div class="score-row"><span class="sr-label">ヒントペナルティ (${G.hintsUsed}回)</span><span class="sr-penalty">-${score.hintPenalty}</span></div>` : ''}
+    </div>
+
+    <div class="score-breakdown">
+      <h3>調査チェックリスト</h3>
+      ${checksHtml}
+    </div>
+
+    <div class="ideal-steps">
+      <h3>理想的な対応手順</h3>
+      <ol>${stepsHtml}</ol>
+      <div class="explanation">${s.explanation}</div>
+    </div>
+
+    <div class="cmd-history">
+      <h3>入力コマンド履歴</h3>
+      ${cmdHistHtml}
+    </div>
+
+    <div class="result-actions">
+      <button class="btn" onclick="renderScenarioList();showScreen('select-screen')">シナリオ選択に戻る</button>
+      <button class="btn btn-dim" onclick="startGame(SCENARIOS.find(s=>s.id===${G.scenario.id}))">リトライ</button>
+    </div>
+  `;
+
+  showScreen('result-screen');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INPUT HANDLING
+// ═══════════════════════════════════════════════════════════════
+$('cmd-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = $('cmd-input').value;
+    $('cmd-input').value = '';
+    execCommand(val);
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (G.inputHistory.length > 0) {
+      if (G.inputHistoryIdx > 0) G.inputHistoryIdx--;
+      $('cmd-input').value = G.inputHistory[G.inputHistoryIdx] || '';
+    }
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (G.inputHistoryIdx < G.inputHistory.length - 1) {
+      G.inputHistoryIdx++;
+      $('cmd-input').value = G.inputHistory[G.inputHistoryIdx] || '';
+    } else {
+      G.inputHistoryIdx = G.inputHistory.length;
+      $('cmd-input').value = '';
+    }
+  }
+});
+
+// Keep focus on input
+document.addEventListener('click', e => {
+  if ($('game-screen').classList.contains('active')) {
+    $('cmd-input').focus();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+renderScenarioList();
+</script>
+</body>
+</html>
