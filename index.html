@@ -29,9 +29,25 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 .scenario-card .sc-diff{font-size:11px;margin-top:6px}
 .diff-easy{color:#00cc00}.diff-med{color:var(--yellow)}.diff-hard{color:var(--red)}
 .best-score{color:var(--yellow);font-size:11px;margin-top:4px}
-/* Game Screen */
-#game-screen{display:none;flex-direction:column;height:100vh}
+/* Game Screen — 2 column layout */
+#game-screen{display:none;flex-direction:row;height:100vh}
 #game-screen.active{display:flex}
+/* Left Panel: Monitor Spec */
+.spec-panel{width:30%;min-width:240px;max-width:360px;background:#0d0d0d;border-right:1px solid var(--border);overflow-y:auto;padding:12px;font-size:12px;flex-shrink:0}
+.spec-panel h3{color:var(--cyan);font-size:13px;margin:12px 0 6px;border-bottom:1px solid var(--border);padding-bottom:4px}
+.spec-panel h3:first-child{margin-top:0}
+.spec-panel .spec-row{color:var(--white);line-height:1.6;padding-left:8px}
+.spec-panel .spec-label{color:var(--dim)}
+.spec-panel .spec-val{color:var(--bright)}
+.spec-panel .procedure-list{color:var(--white);padding-left:20px;line-height:1.8}
+.spec-panel .procedure-list li{margin:2px 0}
+/* Evidence Checklist */
+.evidence-list{list-style:none;padding:0}
+.evidence-list li{line-height:1.8;padding-left:4px}
+.evidence-list .done{color:var(--bright)}
+.evidence-list .pending{color:var(--dim)}
+/* Right Panel: Game area */
+.game-main{flex:1;display:flex;flex-direction:column;min-width:0}
 .alert-banner{background:#1a0000;border:2px solid var(--red);padding:10px 16px;margin:8px;animation:pulse 2s infinite;flex-shrink:0}
 @keyframes pulse{0%,100%{border-color:var(--red)}50%{border-color:#660000}}
 .alert-banner .alert-label{color:var(--red);font-weight:bold;font-size:13px}
@@ -41,7 +57,7 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 .status-bar span{white-space:nowrap}
 .status-bar .st-label{color:var(--dim)}
 .status-bar .st-val{color:var(--cyan)}
-.terminal-wrap{flex:1;overflow-y:auto;padding:8px 16px 0;scroll-behavior:smooth}
+.terminal-wrap{flex:1;overflow-y:auto;padding:8px 16px 0;scroll-behavior:smooth;user-select:text;-webkit-user-select:text}
 .terminal-wrap::-webkit-scrollbar{width:6px}
 .terminal-wrap::-webkit-scrollbar-track{background:var(--bg)}
 .terminal-wrap::-webkit-scrollbar-thumb{background:var(--border)}
@@ -54,6 +70,9 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 .input-row{display:flex;align-items:center;padding:4px 16px 8px;flex-shrink:0;background:var(--bg)}
 .input-row .prompt-text{color:var(--bright);white-space:nowrap;margin-right:4px;font-size:13px}
 .input-row input{flex:1;background:transparent;border:none;color:var(--fg);font-family:inherit;font-size:13px;outline:none;caret-color:var(--fg)}
+/* Mobile: spec panel toggle */
+.spec-toggle{display:none;position:fixed;top:8px;left:8px;z-index:100;background:var(--panel);border:1px solid var(--border);color:var(--cyan);font-family:inherit;font-size:12px;padding:4px 10px;cursor:pointer}
+.spec-toggle:hover{background:#1a1a1a}
 /* Result Screen */
 #result-screen{padding:20px;overflow-y:auto;align-items:center}
 .result-box{max-width:650px;width:100%;margin:0 auto}
@@ -88,6 +107,11 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
   .input-row{padding:4px 12px 6px}
   #select-screen{padding:12px}
   .scenario-card{padding:12px}
+  /* Mobile: hide spec panel by default, toggle */
+  .spec-panel{display:none;position:fixed;top:0;left:0;width:80%;max-width:320px;height:100vh;z-index:99;border-right:2px solid var(--border)}
+  .spec-panel.open{display:block}
+  .spec-toggle{display:block}
+  .game-main{width:100%}
 }
 </style>
 </head>
@@ -102,21 +126,42 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 
 <!-- SCREEN: Game -->
 <div id="game-screen" class="screen">
-  <div class="alert-banner" id="alert-banner">
-    <div class="alert-label" id="alert-label"></div>
-    <div class="alert-host" id="alert-host"></div>
-    <div class="alert-msg" id="alert-msg"></div>
+  <button class="spec-toggle" id="spec-toggle" onclick="toggleSpecPanel()">SPEC</button>
+  <!-- Left: Monitor Spec Panel -->
+  <div class="spec-panel" id="spec-panel">
+    <h3>ホスト情報</h3>
+    <div id="spec-host-info"></div>
+    <h3>サービス定義</h3>
+    <div id="spec-service-info"></div>
+    <h3>対応手順</h3>
+    <ol class="procedure-list">
+      <li>SSH接続</li>
+      <li>エビデンス取得</li>
+      <li>原因特定</li>
+      <li>復旧</li>
+      <li>復旧確認</li>
+    </ol>
+    <h3>エビデンス</h3>
+    <ul class="evidence-list" id="evidence-list"></ul>
   </div>
-  <div class="status-bar">
-    <span><span class="st-label">TIME </span><span class="st-val" id="st-time">00:00</span></span>
-    <span><span class="st-label">CMD </span><span class="st-val" id="st-cmd">0</span></span>
-    <span><span class="st-label">HINT </span><span class="st-val" id="st-hint">3</span></span>
-    <span><span class="st-label">HOST </span><span class="st-val" id="st-host">local</span></span>
-  </div>
-  <div class="terminal-wrap" id="terminal"></div>
-  <div class="input-row">
-    <span class="prompt-text" id="prompt-text">user@local:~$ </span>
-    <input type="text" id="cmd-input" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+  <!-- Right: Game Main -->
+  <div class="game-main">
+    <div class="alert-banner" id="alert-banner">
+      <div class="alert-label" id="alert-label"></div>
+      <div class="alert-host" id="alert-host"></div>
+      <div class="alert-msg" id="alert-msg"></div>
+    </div>
+    <div class="status-bar">
+      <span><span class="st-label">TIME </span><span class="st-val" id="st-time">00:00</span></span>
+      <span><span class="st-label">CMD </span><span class="st-val" id="st-cmd">0</span></span>
+      <span><span class="st-label">HINT </span><span class="st-val" id="st-hint">3</span></span>
+      <span><span class="st-label">HOST </span><span class="st-val" id="st-host">local</span></span>
+    </div>
+    <div class="terminal-wrap" id="terminal"></div>
+    <div class="input-row">
+      <span class="prompt-text" id="prompt-text">user@local:~$ </span>
+      <input type="text" id="cmd-input" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+    </div>
   </div>
 </div>
 
@@ -127,6 +172,17 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 
 <script>
 'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// EVIDENCE DEFINITIONS
+// ═══════════════════════════════════════════════════════════════
+const REQUIRED_EVIDENCE = [
+  { cmd: 'w', label: 'w', match: input => /^w$/.test(input.trim()) },
+  { cmd: 'ps auxfww', label: 'ps auxfww', match: input => /^ps\s+aux/.test(input.trim()) },
+  { cmd: 'netstat -antp', label: 'netstat -antp', match: input => /^netstat\s/.test(input.trim()) },
+  { cmd: 'top -c -d 1', label: 'top -c -d 1', match: input => /^top/.test(input.trim()) },
+  { cmd: 'vmstat 1', label: 'vmstat 1', match: input => /^vmstat/.test(input.trim()) },
+];
 
 // ═══════════════════════════════════════════════════════════════
 // SCENARIOS
@@ -180,24 +236,34 @@ const SCENARIOS = [
         '/root/sim/stress-test.sh': '#!/bin/sh\nstress-ng --cpu 2 --timeout 0 &',
         '/tmp': []
       },
+      wOutput: ' 14:23:01 up 3 days, 7:42,  1 user,  load average: 8.52, 6.31, 3.14\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nroot     pts/0    10.0.2.2         14:20    0.00s  0.01s  0.00s w',
+      netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      142/sshd\ntcp        0      0 0.0.0.0:8081            0.0.0.0:*               LISTEN      168/nginx\ntcp        0      0 0.0.0.0:5666            0.0.0.0:*               LISTEN      200/nrpe',
+      vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 2  0      0 112000  20000 200000    0    0   120    80  250  480 95  3  0  2  0\n 2  0      0 111800  20000 200000    0    0    10     5  240  470 96  2  0  2  0',
+      monitorSpec: {
+        host: { name:'alpine-vm', os:'Alpine Linux 3.19', ip:'10.0.2.15 (NAT: 127.0.0.1:2222)', ssh:'ssh -p 2222 root@127.0.0.1' },
+        service: { name:'CPU Load', plugin:'check_nrpe -H alpine-vm -c check_load', warning:'2.0,2.0,2.0', critical:'4.0,4.0,4.0', interval:'5min' },
+      },
       resolved: false,
       checkResolution(state) {
         const stressAlive = state.procs.some(p => p.cmd.includes('stress-ng') && !p.killed);
         return !stressAlive;
       },
-      idealTime: 60,
-      idealCmds: 5,
+      idealTime: 90,
+      idealCmds: 10,
       idealSteps: [
         'ssh -p 2222 root@127.0.0.1 でalpine-vmに接続',
-        'uptime で負荷状況を確認',
-        'ps aux | grep stress でCPUを消費しているプロセスを特定',
+        'w で負荷状況とログインユーザーを確認',
+        'ps auxfww でプロセスツリーを確認',
+        'netstat -antp でLISTENポートを確認',
+        'top -c -d 1 でリアルタイムCPU状況を確認',
+        'vmstat 1 でシステム全体の状態を確認',
         'killall stress-ng で暴走プロセスを停止',
-        'uptime で負荷の低下を確認'
+        'w で負荷の低下を確認'
       ],
-      explanation: 'stress-ngはCPUストレステストツールです。--timeout 0 で無限実行されており、2コアのCPUを100%使い切っていました。killallで全stress-ngプロセスを一括停止するのが最も効率的です。',
+      explanation: 'stress-ngはCPUストレステストツールです。--timeout 0 で無限実行されており、2コアのCPUを100%使い切っていました。killallで全stress-ngプロセスを一括停止するのが最も効率的です。基本コマンド5つでエビデンスを残すことが実務では重要です。',
       hints: [
-        'まず ssh でホストに接続し、uptime でload averageを確認してみましょう',
-        'ps aux で全プロセスを確認し、CPU使用率が高いプロセスを探しましょう（grep も使えます）',
+        'まず ssh でホストに接続し、w でload averageを確認してみましょう',
+        'ps auxfww で全プロセスを確認し、CPU使用率が高いプロセスを探しましょう',
         'stress-ng が原因です。killall stress-ng で停止できます'
       ]
     };
@@ -252,20 +318,31 @@ const SCENARIOS = [
         '/tmp': '1.7G\t/tmp',
         '/var/log/*': '12M\t/var/log/messages\n4K\t/var/log/nginx',
       },
+      wOutput: ' 15:10:22 up 3 days, 8:29,  1 user,  load average: 0.12, 0.08, 0.05\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nroot     pts/0    10.0.2.2         15:08    0.00s  0.01s  0.00s w',
+      netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      142/sshd\ntcp        0      0 0.0.0.0:8081            0.0.0.0:*               LISTEN      168/nginx\ntcp        0      0 0.0.0.0:5666            0.0.0.0:*               LISTEN      200/nrpe',
+      vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 0  1      0 142000  20000 200000    0    0  2400  1800  180  320  2  3 80 15  0\n 0  1      0 141800  20000 200000    0    0  2200  1600  175  310  1  2 82 15  0',
+      monitorSpec: {
+        host: { name:'alpine-vm', os:'Alpine Linux 3.19', ip:'10.0.2.15 (NAT: 127.0.0.1:2222)', ssh:'ssh -p 2222 root@127.0.0.1' },
+        service: { name:'Disk Usage', plugin:'check_nrpe -H alpine-vm -c check_disk', warning:'80%', critical:'90%', interval:'10min' },
+      },
       bigFileRemoved: false,
       resolved: false,
       checkResolution(state) { return state.bigFileRemoved; },
-      idealTime: 90,
-      idealCmds: 6,
+      idealTime: 120,
+      idealCmds: 11,
       idealSteps: [
         'ssh -p 2222 root@127.0.0.1 でalpine-vmに接続',
+        'w で負荷状況を確認',
+        'ps auxfww でプロセスを確認',
+        'netstat -antp でポートを確認',
+        'top -c -d 1 でリアルタイム状況を確認',
+        'vmstat 1 でI/O状態を確認（ディスクI/Oが高い）',
         'df -h でディスク使用状況を確認',
         'du -sh /tmp/* で大きなファイルを探す',
-        'ls -lh /tmp/debug-output.log でファイルサイズを確認',
         'rm /tmp/debug-output.log で巨大ログを削除',
         'df -h で空き容量の回復を確認'
       ],
-      explanation: '/tmp に 1.7GB の debug-output.log が放置されていました。デバッグセッションの出力が無制限にログされた結果です。rm で削除すれば即座にディスク容量が回復します。定期的な /tmp クリーンアップの仕組みが必要です。',
+      explanation: '/tmp に 1.7GB の debug-output.log が放置されていました。デバッグセッションの出力が無制限にログされた結果です。rm で削除すれば即座にディスク容量が回復します。vmstat の bi/bo が高い値を示しており、ディスクI/O負荷の手がかりになります。',
       hints: [
         'df -h でどのパーティションが逼迫しているか確認しましょう',
         'du -sh /tmp/* や du -sh /var/log/* で大きなファイルを探しましょう',
@@ -315,21 +392,32 @@ const SCENARIOS = [
         '/root/sim': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
         '/etc/nginx/nginx.conf': 'worker_processes auto;\nevents { worker_connections 128; }\nhttp {\n  server {\n    listen 8081;\n    location /health { return 200 "OK"; }\n    location / { root /var/www/html; }\n  }\n}',
       },
+      wOutput: ' 16:05:33 up 3 days, 9:24,  1 user,  load average: 0.05, 0.03, 0.01\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nroot     pts/0    10.0.2.2         16:03    0.00s  0.01s  0.00s w',
+      netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      142/sshd\ntcp        0      0 0.0.0.0:5666            0.0.0.0:*               LISTEN      200/nrpe',
+      vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 0  0      0 158000  20000 200000    0    0     5     2   80  150  0  1 99  0  0\n 0  0      0 158000  20000 200000    0    0     3     1   75  140  0  0 100  0  0',
+      monitorSpec: {
+        host: { name:'alpine-vm', os:'Alpine Linux 3.19', ip:'10.0.2.15 (NAT: 127.0.0.1:2222)', ssh:'ssh -p 2222 root@127.0.0.1' },
+        service: { name:'HTTP', plugin:'check_http -H 127.0.0.1 -p 8081', warning:'-', critical:'Connection refused', interval:'3min' },
+      },
       resolved: false,
       checkResolution(state) { return state.services.nginx === 'started'; },
-      idealTime: 60,
-      idealCmds: 5,
+      idealTime: 90,
+      idealCmds: 10,
       idealSteps: [
         'ssh -p 2222 root@127.0.0.1 でalpine-vmに接続',
+        'w で負荷状況を確認',
+        'ps auxfww でプロセスを確認（nginxがいない）',
+        'netstat -antp でポートを確認（:8081がない = nginx停止の証拠）',
+        'top -c -d 1 でリアルタイム状況を確認',
+        'vmstat 1 でシステム状態を確認',
         'rc-service nginx status でnginxの状態を確認',
-        'ps aux | grep nginx でnginxプロセスが存在しないことを確認',
         'tail /var/log/nginx/error.log でログからSIGTERMを確認',
         'rc-service nginx start でnginxを起動'
       ],
-      explanation: 'nginxがSIGTERMを受けて正常終了していました。Alpine LinuxではOpenRCを使うため、rc-service nginx start で起動します（systemctl ではありません）。ログを確認して意図的停止か異常停止かを判断することが重要です。',
+      explanation: 'nginxがSIGTERMを受けて正常終了していました。netstatで:8081がLISTENしていないことから、nginxが停止していることが一目でわかります。Alpine LinuxではOpenRCを使うため、rc-service nginx start で起動します。',
       hints: [
-        'rc-service nginx status でサービスの状態を確認しましょう（Alpine Linuxです）',
-        'ps aux | grep nginx でプロセスの有無を確認し、ログも見てみましょう',
+        'netstat -antp で:8081がLISTENしていないことを確認しましょう',
+        'ps auxfww でnginxプロセスが存在しないことを確認し、ログも見てみましょう',
         'rc-service nginx start で起動できます（Alpine Linuxでは systemctl ではなく rc-service です）'
       ]
     };
@@ -377,25 +465,36 @@ const SCENARIOS = [
         '/var/log/syslog': 'Mar  2 17:25:01 sentinel kernel: [OOM warning] low memory condition\nMar  2 17:28:33 sentinel systemd: niko-watchdog.service: memory pressure detected\nMar  2 17:30:01 sentinel kernel: [OOM warning] swap usage high',
         '/home/niko/niko-watchdog': ['watchdog.js', 'package.json', '.env', 'dashboard.html'],
       },
+      wOutput: ' 17:30:45 up 14 days, 2:15,  1 user,  load average: 0.88, 0.72, 0.45\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nniko     pts/0    100.98.189.121   17:28    0.00s  0.02s  0.00s w',
+      netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      412/sshd\ntcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      2100/node',
+      vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 1  0 1200000  18000   5000  45000  120   80    60    40  200  400 15  5 70 10  0\n 1  0 1210000  16000   5000  44000  150  100    70    50  210  420 18  6 66 10  0',
+      monitorSpec: {
+        host: { name:'sentinel', os:'Ubuntu 22.04', ip:'161.33.150.102 (Tailscale: 100.94.48.25)', ssh:'ssh niko@100.94.48.25' },
+        service: { name:'Memory Usage', plugin:'check_by_ssh -H sentinel -C check_mem.sh', warning:'80%', critical:'90%', interval:'5min' },
+      },
       resolved: false,
       checkResolution(state) {
         const leakAlive = state.procs.some(p => p.cmd.includes('leak-test.js') && !p.killed);
         return !leakAlive;
       },
-      idealTime: 90,
-      idealCmds: 6,
+      idealTime: 120,
+      idealCmds: 11,
       idealSteps: [
         'ssh niko@100.94.48.25 でsentinelに接続',
+        'w で負荷状況を確認',
+        'ps auxfww でプロセスツリーを確認',
+        'netstat -antp でポートを確認',
+        'top -c -d 1 でメモリ使用状況をリアルタイムで確認',
+        'vmstat 1 でswap使用状況を確認（swpd/si/soが高い）',
         'free -m でメモリ使用状況を確認',
-        'ps aux --sort=-%mem | head でメモリ消費トップを確認',
         'cat /home/niko/leak-test.js でリークの原因コードを確認',
         'kill 5432 でリークプロセスを停止',
         'free -m でメモリ回復を確認'
       ],
-      explanation: 'leak-test.js が1秒ごとに1MBのBufferを配列に追加し続けるメモリリークを起こしていました。780MBまで膨張し、1GBしかないsentinelのメモリをほぼ使い切っていました。kill でプロセスを停止すれば即座にメモリが解放されます。OOM Killerが発動する前に対処することが重要です。',
+      explanation: 'leak-test.js が1秒ごとに1MBのBufferを配列に追加し続けるメモリリークを起こしていました。780MBまで膨張し、1GBしかないsentinelのメモリをほぼ使い切っていました。vmstatでswpd/si/soの値が高く、swap大量使用の兆候が読み取れます。kill でプロセスを停止すれば即座にメモリが解放されます。',
       hints: [
         'free -m でメモリの使用状況を確認しましょう',
-        'ps aux --sort=-%mem | head でメモリを大量に使っているプロセスを探しましょう',
+        'ps auxfww --sort=-%mem | head でメモリを大量に使っているプロセスを探しましょう',
         'PID 5432 の leak-test.js が780MB使っています。kill 5432 で停止しましょう'
       ]
     };
@@ -469,23 +568,34 @@ Mar 02 18:44:55 minipc systemd[1]: niko-app.service: Main process exited, code=e
         '/home/niko/niko-app/package.json': '{\n  "name": "niko-app",\n  "scripts": {\n    "build": "tsc",\n    "start": "node dist/index.js",\n    "dev": "tsx src/index.ts"\n  }\n}',
         '/var/log/syslog': 'Mar  2 18:40:01 minipc niko-app[8800]: rsync deploy received\nMar  2 18:42:30 minipc niko-app[8800]: build started\nMar  2 18:44:50 minipc systemd[1]: Stopping niko-app.service...\nMar  2 18:44:52 minipc systemd[1]: Starting niko-app.service...\nMar  2 18:44:55 minipc systemd[1]: niko-app.service: Failed with result \'exit-code\'.',
       },
+      wOutput: ' 18:45:10 up 21 days, 5:33,  1 user,  load average: 0.15, 0.22, 0.18\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nniko     pts/0    100.98.189.121   18:43    0.00s  0.01s  0.00s w',
+      netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      385/sshd',
+      vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 0  0 128000 2105000 200000 1690000    0    0     8     4  120  250  1  1 98  0  0\n 0  0 128000 2105000 200000 1690000    0    0     5     2  115  240  0  1 99  0  0',
+      monitorSpec: {
+        host: { name:'minipc', os:'Manjaro Linux (i3wm)', ip:'100.85.53.125 (Tailscale)', ssh:'ssh niko@100.85.53.125' },
+        service: { name:'niko-app', plugin:'check_http -H 100.85.53.125 -p 3939', warning:'-', critical:'Connection refused', interval:'3min' },
+      },
       needsBuild: true,
       rebuilt: false,
       resolved: false,
       checkResolution(state) { return state.services['niko-app'] === 'active'; },
-      idealTime: 120,
-      idealCmds: 8,
+      idealTime: 150,
+      idealCmds: 13,
       idealSteps: [
         'ssh niko@100.85.53.125 でminipcに接続',
+        'w で負荷状況を確認',
+        'ps auxfww でプロセスを確認（niko-appがいない）',
+        'netstat -antp でポートを確認（:3939がない = niko-app停止の証拠）',
+        'top -c -d 1 でリアルタイム状況を確認',
+        'vmstat 1 でシステム状態を確認',
         'systemctl status niko-app でサービス状態を確認',
         'journalctl -u niko-app -n 20 でエラーログを確認',
         'ls /home/niko/niko-app/dist/ でdistディレクトリが空なのを確認',
-        'cat /home/niko/niko-app/package.json でビルドコマンドを確認',
         'cd /home/niko/niko-app && npm run build でTypeScriptをビルド',
         'sudo systemctl restart niko-app でサービスを再起動',
         'systemctl status niko-app で復旧を確認'
       ],
-      explanation: 'rsyncデプロイ後にdist/ディレクトリが空（ビルド成果物がない）状態でサービスが再起動され、"Cannot find module dist/index.js" でクラッシュしていました。TypeScriptプロジェクトなので npm run build で dist/ にコンパイルしてからサービスを再起動する必要があります。デプロイスクリプトにビルドステップが含まれているか確認が必要です。',
+      explanation: 'rsyncデプロイ後にdist/ディレクトリが空（ビルド成果物がない）状態でサービスが再起動され、"Cannot find module dist/index.js" でクラッシュしていました。netstatで:3939がLISTENしていないことからniko-appが停止していることが明らかです。npm run build で dist/ にコンパイルしてからサービスを再起動する必要があります。',
       hints: [
         'systemctl status niko-app でサービスの状態を確認しましょう',
         'journalctl で "Cannot find module dist/index.js" が見えるはず。ls /home/niko/niko-app/dist/ を確認しましょう',
@@ -511,7 +621,7 @@ let G = {
   inputHistory: [],
   inputHistoryIdx: -1,
   timerInterval: null,
-  investigationChecks: { load:false, process:false, disk:false, memory:false, log:false, service:false },
+  evidenceChecks: [false, false, false, false, false],
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -571,6 +681,54 @@ function saveBestScore(scenarioId, score) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SPEC PANEL & EVIDENCE
+// ═══════════════════════════════════════════════════════════════
+function renderSpecPanel(scenario, state) {
+  const spec = state.monitorSpec;
+  $('spec-host-info').innerHTML = `
+    <div class="spec-row"><span class="spec-label">Name: </span><span class="spec-val">${spec.host.name}</span></div>
+    <div class="spec-row"><span class="spec-label">OS: </span><span class="spec-val">${spec.host.os}</span></div>
+    <div class="spec-row"><span class="spec-label">IP: </span><span class="spec-val">${spec.host.ip}</span></div>
+    <div class="spec-row"><span class="spec-label">SSH: </span><span class="spec-val">${spec.host.ssh}</span></div>
+  `;
+  $('spec-service-info').innerHTML = `
+    <div class="spec-row"><span class="spec-label">Service: </span><span class="spec-val">${spec.service.name}</span></div>
+    <div class="spec-row"><span class="spec-label">Plugin: </span><span class="spec-val">${spec.service.plugin}</span></div>
+    <div class="spec-row"><span class="spec-label">Warning: </span><span class="spec-val">${spec.service.warning}</span></div>
+    <div class="spec-row"><span class="spec-label">Critical: </span><span class="spec-val">${spec.service.critical}</span></div>
+    <div class="spec-row"><span class="spec-label">Interval: </span><span class="spec-val">${spec.service.interval}</span></div>
+  `;
+  renderEvidenceList();
+}
+
+function renderEvidenceList() {
+  const list = $('evidence-list');
+  list.innerHTML = '';
+  REQUIRED_EVIDENCE.forEach((ev, i) => {
+    const done = G.evidenceChecks[i];
+    const li = document.createElement('li');
+    li.className = done ? 'done' : 'pending';
+    li.textContent = `${done ? '✓' : '☐'} ${ev.label}`;
+    list.appendChild(li);
+  });
+}
+
+function checkEvidence(rawInput) {
+  let updated = false;
+  REQUIRED_EVIDENCE.forEach((ev, i) => {
+    if (!G.evidenceChecks[i] && ev.match(rawInput)) {
+      G.evidenceChecks[i] = true;
+      updated = true;
+    }
+  });
+  if (updated) renderEvidenceList();
+}
+
+function toggleSpecPanel() {
+  $('spec-panel').classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SCENARIO SELECT
 // ═══════════════════════════════════════════════════════════════
 function renderScenarioList() {
@@ -613,12 +771,14 @@ function startGame(scenario) {
   G.cmdHistory = [];
   G.inputHistory = [];
   G.inputHistoryIdx = -1;
-  G.investigationChecks = { load:false, process:false, disk:false, memory:false, log:false, service:false };
+  G.evidenceChecks = [false, false, false, false, false];
 
   $('terminal').innerHTML = '';
   $('alert-label').textContent = `${scenario.nagios.label}  [${scenario.nagios.type}]`;
   $('alert-host').textContent = `Host: ${scenario.nagios.host} / Service: ${scenario.nagios.service} / State: ${scenario.nagios.state}`;
   $('alert-msg').textContent = scenario.nagios.output;
+
+  renderSpecPanel(scenario, G.state);
 
   appendLine(`[${scenario.nagios.time}] Nagios Alert Received`, 'error');
   appendLine(`${scenario.nagios.service} on ${scenario.nagios.host} is ${scenario.nagios.state}`, 'error');
@@ -738,6 +898,12 @@ function execCommand(rawInput) {
   G.inputHistory.push(input);
   G.inputHistoryIdx = G.inputHistory.length;
 
+  // Check evidence against the raw (pre-pipe) main command
+  if (G.connected) {
+    const mainCmd = splitPipes(input)[0].trim();
+    checkEvidence(mainCmd);
+  }
+
   const promptStr = $('prompt-text').textContent;
   appendLine(promptStr + input, 'prompt-line');
 
@@ -837,17 +1003,17 @@ function execRemote(cmd, args) {
   const s = G.state;
 
   switch (cmd) {
+    case 'w': {
+      return s.wOutput;
+    }
+
     case 'uptime':
-      G.investigationChecks.load = true;
       return s.uptime;
 
     case 'top': {
-      G.investigationChecks.load = true;
-      G.investigationChecks.process = true;
       let out = `top - ${s.uptime.trim().split(',')[0].split('up')[0].trim()} up ...\n`;
-      out += `Tasks: ${s.procs.length} total\n`;
-      const memPct = ((s.mem.used / s.mem.total) * 100).toFixed(1);
-      out += `%Cpu(s): ${s.procs.reduce((a,p)=>a+p.cpu,0).toFixed(1)} us\n`;
+      out += `Tasks: ${s.procs.filter(p => !p.killed).length} total\n`;
+      out += `%Cpu(s): ${s.procs.filter(p => !p.killed).reduce((a,p)=>a+p.cpu,0).toFixed(1)} us\n`;
       out += `MiB Mem: ${s.mem.total} total, ${s.mem.free} free, ${s.mem.used} used, ${s.mem.buff} buff/cache\n\n`;
       out += fmtPsHeader();
       const sorted = [...s.procs].filter(p => !p.killed).sort((a,b) => b.cpu - a.cpu);
@@ -856,7 +1022,6 @@ function execRemote(cmd, args) {
     }
 
     case 'ps': {
-      G.investigationChecks.process = true;
       let out = fmtPsHeader();
       const procs = s.procs.filter(p => !p.killed);
       procs.forEach(p => { out += '\n' + fmtPsLine(p); });
@@ -883,8 +1048,15 @@ function execRemote(cmd, args) {
       return out;
     }
 
+    case 'netstat': {
+      return s.netstat;
+    }
+
+    case 'vmstat': {
+      return s.vmstat;
+    }
+
     case 'df': {
-      G.investigationChecks.disk = true;
       let out = 'Filesystem      Size  Used Avail Use% Mounted on';
       for (const [mount, info] of Object.entries(s.fs)) {
         out += `\n/dev/sda1       ${info.size}  ${info.used}  ${info.avail}  ${info.pct}  ${info.mount}`;
@@ -893,7 +1065,6 @@ function execRemote(cmd, args) {
     }
 
     case 'free': {
-      G.investigationChecks.memory = true;
       const m = s.mem;
       let out = '              total        used        free      shared  buff/cache   available\n';
       out += `Mem:          ${pad(m.total,6)}      ${pad(m.used,6)}      ${pad(m.free,6)}      ${pad(m.shared,6)}      ${pad(m.buff,6)}      ${pad(m.avail,6)}`;
@@ -904,7 +1075,6 @@ function execRemote(cmd, args) {
     }
 
     case 'cat': {
-      G.investigationChecks.log = true;
       const path = resolvePath(args[0]);
       if (!path) return 'cat: missing operand';
       const content = getFileContent(path);
@@ -914,7 +1084,6 @@ function execRemote(cmd, args) {
     }
 
     case 'tail': {
-      G.investigationChecks.log = true;
       let n = 10;
       let filePath = null;
       for (let i = 0; i < args.length; i++) {
@@ -932,7 +1101,6 @@ function execRemote(cmd, args) {
     }
 
     case 'head': {
-      G.investigationChecks.log = true;
       let n = 10;
       let filePath = null;
       for (let i = 0; i < args.length; i++) {
@@ -968,7 +1136,6 @@ function execRemote(cmd, args) {
     }
 
     case 'du': {
-      G.investigationChecks.disk = true;
       const path = args.filter(a => !a.startsWith('-')).pop() || s.cwd;
       // Check for special du results (handles wildcards like /tmp/*)
       if (s.duResults) {
@@ -1044,7 +1211,6 @@ function execRemote(cmd, args) {
     }
 
     case 'systemctl': {
-      G.investigationChecks.service = true;
       const action = args[0];
       const svcName = args[1];
       if (!action) return 'systemctl: missing command';
@@ -1124,8 +1290,6 @@ function execRemote(cmd, args) {
     }
 
     case 'journalctl': {
-      G.investigationChecks.log = true;
-      G.investigationChecks.service = true;
       const uIdx = args.indexOf('-u');
       let svcName = null;
       if (uIdx >= 0) svcName = args[uIdx + 1];
@@ -1152,7 +1316,6 @@ function execRemote(cmd, args) {
     }
 
     case 'rc-service': {
-      G.investigationChecks.service = true;
       const svcName = args[0];
       const action = args[1];
       if (!svcName || !action) return 'Usage: rc-service <service> <action>';
@@ -1171,6 +1334,8 @@ function execRemote(cmd, args) {
             { user:'root', pid:1168, cpu:0.0, mem:0.3, vsz:6780, rss:3200, tty:'?', stat:'Ss', start:'now', time:'0:00', cmd:'nginx: master process /usr/sbin/nginx' },
             { user:'nobody', pid:1169, cpu:0.0, mem:0.2, vsz:7200, rss:2800, tty:'?', stat:'S', start:'now', time:'0:00', cmd:'nginx: worker process' }
           );
+          // Update netstat to show :8081
+          s.netstat += '\ntcp        0      0 0.0.0.0:8081            0.0.0.0:*               LISTEN      1168/nginx';
         }
         return `* Starting ${svcName} ...  [ ok ]`;
       }
@@ -1294,9 +1459,12 @@ function showHelp() {
 接続:  ssh [-p port] user@host   ホストに接続
        exit                       切断 / ゲーム終了
 
-調査:  uptime                    負荷確認
-       top                       プロセス一覧（CPU順）
-       ps aux                    プロセス一覧
+調査:  w                         負荷・ログインユーザー確認
+       uptime                    負荷確認
+       top [-c] [-d 1]           プロセス一覧（CPU順）
+       ps aux[fww]               プロセス一覧
+       netstat -antp             ネットワーク接続・LISTENポート
+       vmstat 1                  システム状態（CPU/メモリ/I/O）
        df -h                     ディスク使用状況
        free -m                   メモリ使用状況
        cat <file>                ファイル表示
@@ -1329,7 +1497,7 @@ function showHint() {
   G.hintsUsed++;
   G.hintCount++;
   updateStatus();
-  return `💡 HINT ${G.hintsUsed}/3: ${hint}`;
+  return `HINT ${G.hintsUsed}/3: ${hint}`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1362,15 +1530,14 @@ function calcScore() {
   const ratio = idealCmds / Math.max(1, G.cmdCount);
   let cmdScore = Math.min(30, Math.floor(ratio * 30));
 
-  // Investigation coverage (20pt)
-  const checks = G.investigationChecks;
-  const checkCount = Object.values(checks).filter(Boolean).length;
-  let investScore = Math.min(20, checkCount * 5);
+  // Evidence collection (20pt) — 5 commands × 4pt
+  const evidenceCount = G.evidenceChecks.filter(Boolean).length;
+  let evidenceScore = evidenceCount * 4;
 
   // Hint penalty
   const hintPenalty = G.hintsUsed * 3;
 
-  const total = Math.max(0, Math.min(100, timeScore + cmdScore + investScore - hintPenalty));
+  const total = Math.max(0, Math.min(100, timeScore + cmdScore + evidenceScore - hintPenalty));
 
   return {
     total,
@@ -1378,11 +1545,10 @@ function calcScore() {
     elapsed,
     timeScore,
     cmdScore,
-    investScore,
+    evidenceScore,
+    evidenceCount,
     hintPenalty,
     cmdCount: G.cmdCount,
-    checks,
-    checkCount
   };
 }
 
@@ -1394,17 +1560,8 @@ function endGame() {
   const s = G.state;
   const gradeClass = `grade-${score.grade}`;
 
-  const checksLabels = {
-    load: '負荷確認 (uptime/top)',
-    process: 'プロセス確認 (ps/top)',
-    disk: 'ディスク確認 (df)',
-    memory: 'メモリ確認 (free)',
-    log: 'ログ確認 (cat/tail)',
-    service: 'サービス確認 (systemctl/rc-service)'
-  };
-
-  const checksHtml = Object.entries(score.checks)
-    .map(([k, v]) => `<div class="score-row"><span class="sr-label">${v ? '✓' : '✗'} ${checksLabels[k]}</span></div>`)
+  const evidenceHtml = REQUIRED_EVIDENCE
+    .map((ev, i) => `<div class="score-row"><span class="sr-label">${G.evidenceChecks[i] ? '✓' : '✗'} ${ev.label}</span><span class="${G.evidenceChecks[i] ? 'sr-val' : 'sr-penalty'}">${G.evidenceChecks[i] ? '+4' : '0'}</span></div>`)
     .join('');
 
   const cmdHistHtml = G.cmdHistory
@@ -1425,13 +1582,13 @@ function endGame() {
       <h3>スコア内訳</h3>
       <div class="score-row"><span class="sr-label">時間 (${min}:${sec} / 理想 ${s.idealTime}s)</span><span class="sr-val">${score.timeScore}/40</span></div>
       <div class="score-row"><span class="sr-label">コマンド効率 (${score.cmdCount}回 / 理想 ${s.idealCmds}回)</span><span class="sr-val">${score.cmdScore}/30</span></div>
-      <div class="score-row"><span class="sr-label">調査網羅性 (${score.checkCount}/6)</span><span class="sr-val">${score.investScore}/20</span></div>
+      <div class="score-row"><span class="sr-label">エビデンス収集 (${score.evidenceCount}/5)</span><span class="sr-val">${score.evidenceScore}/20</span></div>
       ${score.hintPenalty > 0 ? `<div class="score-row"><span class="sr-label">ヒントペナルティ (${G.hintsUsed}回)</span><span class="sr-penalty">-${score.hintPenalty}</span></div>` : ''}
     </div>
 
     <div class="score-breakdown">
-      <h3>調査チェックリスト</h3>
-      ${checksHtml}
+      <h3>エビデンスチェックリスト</h3>
+      ${evidenceHtml}
     </div>
 
     <div class="ideal-steps">
@@ -1483,10 +1640,13 @@ $('cmd-input').addEventListener('keydown', e => {
   }
 });
 
-// Keep focus on input
-document.addEventListener('click', e => {
+// Text selection aware focus: only focus input if no text is selected
+document.addEventListener('mouseup', e => {
   if ($('game-screen').classList.contains('active')) {
-    $('cmd-input').focus();
+    const sel = window.getSelection().toString();
+    if (!sel) {
+      $('cmd-input').focus();
+    }
   }
 });
 
