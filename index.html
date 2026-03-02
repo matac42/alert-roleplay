@@ -301,8 +301,7 @@ const SCENARIOS = [
         { user:'nobody', pid:169, cpu:0.0, mem:0.2, vsz:7200, rss:2800, tty:'?', stat:'S', start:'Feb27', time:'0:12', cmd:'nginx: worker process' },
         { user:'nrpe', pid:200, cpu:0.0, mem:0.1, vsz:3200, rss:1400, tty:'?', stat:'Ss', start:'Feb27', time:'0:02', cmd:'/usr/sbin/nrpe -c /etc/nagios/nrpe.cfg -d' },
       ],
-      fs: { '/': { size:'2.0G', used:'1.88G', avail:'120M', pct:'94%', mount:'/' },
-            '/tmp': { size:'2.0G', used:'1.7G', avail:'300M', pct:'85%', mount:'/' } },
+      fs: { '/': { size:'2.0G', used:'1.88G', avail:'120M', pct:'94%', mount:'/' } },
       mem: { total:460, used:98, free:142, shared:4, buff:220, avail:342, swapTotal:0, swapUsed:0, swapFree:0 },
       services: { nginx:'started', sshd:'started', nrpe:'started' },
       files: {
@@ -615,7 +614,6 @@ let G = {
   connected: false,
   startTime: 0,
   cmdCount: 0,
-  hintCount: 0,
   hintsUsed: 0,
   cmdHistory: [],
   inputHistory: [],
@@ -767,7 +765,6 @@ function startGame(scenario) {
   G.startTime = Date.now();
   G.cmdCount = 0;
   G.hintsUsed = 0;
-  G.hintCount = 0;
   G.cmdHistory = [];
   G.inputHistory = [];
   G.inputHistoryIdx = -1;
@@ -893,15 +890,22 @@ function execCommand(rawInput) {
   const input = rawInput.trim();
   if (!input) return;
 
-  G.cmdCount++;
-  G.cmdHistory.push(input);
+  // Don't count meta commands (help, hint, clear) toward cmd count/history
+  const isMeta = /^(help|hint|clear)$/.test(input);
+  if (!isMeta) {
+    G.cmdCount++;
+    G.cmdHistory.push(input);
+  }
   G.inputHistory.push(input);
   G.inputHistoryIdx = G.inputHistory.length;
 
-  // Check evidence against the raw (pre-pipe) main command
+  // Check evidence for each command in && chains
   if (G.connected) {
-    const mainCmd = splitPipes(input)[0].trim();
-    checkEvidence(mainCmd);
+    const chainedCmds = input.split('&&').map(s => s.trim()).filter(Boolean);
+    for (const singleCmd of chainedCmds) {
+      const mainCmd = splitPipes(singleCmd)[0].trim();
+      checkEvidence(mainCmd);
+    }
   }
 
   const promptStr = $('prompt-text').textContent;
@@ -1211,6 +1215,10 @@ function execRemote(cmd, args) {
     }
 
     case 'systemctl': {
+      // Alpine Linux uses OpenRC, not systemd
+      if (!s.systemctl && s.hostname === 'alpine-vm') {
+        return 'bash: systemctl: command not found (Alpine Linux uses rc-service)';
+      }
       const action = args[0];
       const svcName = args[1];
       if (!action) return 'systemctl: missing command';
@@ -1286,6 +1294,7 @@ function execRemote(cmd, args) {
       s.user = 'root';
       const result = execRemote(subTokens[0], subTokens.slice(1));
       s.user = origUser;
+      updatePrompt();
       return result;
     }
 
@@ -1342,6 +1351,13 @@ function execRemote(cmd, args) {
       if (action === 'restart') {
         if (s.services[svcName] === undefined) return `rc-service: service '${svcName}' does not exist`;
         s.services[svcName] = 'started';
+        if (svcName === 'nginx' && !s.procs.some(p => p.cmd.includes('nginx') && !p.killed)) {
+          s.procs.push(
+            { user:'root', pid:1168, cpu:0.0, mem:0.3, vsz:6780, rss:3200, tty:'?', stat:'Ss', start:'now', time:'0:00', cmd:'nginx: master process /usr/sbin/nginx' },
+            { user:'nobody', pid:1169, cpu:0.0, mem:0.2, vsz:7200, rss:2800, tty:'?', stat:'S', start:'now', time:'0:00', cmd:'nginx: worker process' }
+          );
+          s.netstat += '\ntcp        0      0 0.0.0.0:8081            0.0.0.0:*               LISTEN      1168/nginx';
+        }
         return `* Restarting ${svcName} ...  [ ok ]`;
       }
       if (action === 'stop') {
@@ -1376,6 +1392,10 @@ function execRemote(cmd, args) {
         s.fs['/'].used = '680M';
         s.fs['/'].avail = '1.2G';
         s.fs['/'].pct = '36%';
+        if (s.duResults) {
+          s.duResults['/tmp/*'] = '0\t/tmp';
+          s.duResults['/tmp'] = '4K\t/tmp';
+        }
       }
       return '';
     }
@@ -1383,6 +1403,9 @@ function execRemote(cmd, args) {
     case 'npm': {
       if (args[0] === 'run' && args[1] === 'build') {
         if (s.needsBuild) {
+          if (s.cwd !== '/home/niko/niko-app') {
+            return 'npm error: Could not read package.json: no such file or directory';
+          }
           appendLine('> tsc', 'output');
           appendLine('', 'output');
           s.rebuilt = true;
@@ -1391,10 +1414,19 @@ function execRemote(cmd, args) {
         }
         return 'Build completed.';
       }
-      return `npm: command not found or unsupported`;
+      if (args[0] === 'run') return `npm error: Missing script: "${args[1] || ''}"`;
+      return `npm: unknown command "${args[0] || ''}"`;
     }
 
     case 'curl': {
+      const url = args.filter(a => !a.startsWith('-')).pop() || '';
+      // Check if curling a local service that's running
+      if (url.includes(':8081') && s.services.nginx === 'started') {
+        return 'OK';
+      }
+      if (url.includes(':3939') && s.services['niko-app'] === 'active') {
+        return '{"status":"ok"}';
+      }
       return 'curl: (7) Failed to connect';
     }
 
@@ -1483,6 +1515,7 @@ function showHelp() {
 パイプ: | grep <pattern>          フィルタ
         | head [-n N]             先頭N行
         | tail [-n N]             末尾N行
+        | sort [-rh]              ソート
         | wc -l                   行数カウント
 
 その他: pwd, whoami, hostname, date, cd, clear
@@ -1495,7 +1528,6 @@ function showHint() {
   if (G.hintsUsed >= 3) return 'ヒントは全て使用済みです。';
   const hint = hints[G.hintsUsed];
   G.hintsUsed++;
-  G.hintCount++;
   updateStatus();
   return `HINT ${G.hintsUsed}/3: ${hint}`;
 }
@@ -1515,14 +1547,14 @@ function calcScore() {
   const elapsed = Math.floor((Date.now() - G.startTime) / 1000);
   const s = G.state;
 
-  // Time score (40pt)
+  // Time score (50pt)
   const idealTime = s.idealTime;
   let timeScore;
   if (elapsed <= idealTime) {
-    timeScore = 40;
+    timeScore = 50;
   } else {
     const over = elapsed - idealTime;
-    timeScore = Math.max(0, 40 - Math.floor(over / 10) * 2);
+    timeScore = Math.max(0, 50 - Math.floor(over / 10) * 2);
   }
 
   // Command efficiency (30pt)
@@ -1565,7 +1597,10 @@ function endGame() {
     .join('');
 
   const cmdHistHtml = G.cmdHistory
-    .map((c, i) => `<div class="ch-line">${i + 1}. ${c}</div>`)
+    .map((c, i) => {
+      const escaped = c.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return `<div class="ch-line">${i + 1}. ${escaped}</div>`;
+    })
     .join('');
 
   const stepsHtml = s.idealSteps.map(st => `<li>${st}</li>`).join('');
@@ -1580,7 +1615,7 @@ function endGame() {
 
     <div class="score-breakdown">
       <h3>スコア内訳</h3>
-      <div class="score-row"><span class="sr-label">時間 (${min}:${sec} / 理想 ${s.idealTime}s)</span><span class="sr-val">${score.timeScore}/40</span></div>
+      <div class="score-row"><span class="sr-label">時間 (${min}:${sec} / 理想 ${s.idealTime}s)</span><span class="sr-val">${score.timeScore}/50</span></div>
       <div class="score-row"><span class="sr-label">コマンド効率 (${score.cmdCount}回 / 理想 ${s.idealCmds}回)</span><span class="sr-val">${score.cmdScore}/30</span></div>
       <div class="score-row"><span class="sr-label">エビデンス収集 (${score.evidenceCount}/5)</span><span class="sr-val">${score.evidenceScore}/20</span></div>
       ${score.hintPenalty > 0 ? `<div class="score-row"><span class="sr-label">ヒントペナルティ (${G.hintsUsed}回)</span><span class="sr-penalty">-${score.hintPenalty}</span></div>` : ''}
