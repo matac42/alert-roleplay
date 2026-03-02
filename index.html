@@ -39,8 +39,8 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 .spec-panel .spec-row{color:var(--white);line-height:1.6;padding-left:8px}
 .spec-panel .spec-label{color:var(--dim)}
 .spec-panel .spec-val{color:var(--bright)}
-.spec-panel .procedure-list{color:var(--white);padding-left:20px;line-height:1.8}
-.spec-panel .procedure-list li{margin:2px 0}
+.spec-panel .runbook-list{color:var(--white);padding-left:16px;line-height:1.7;font-size:12px}
+.spec-panel .runbook-list li{margin:2px 0}
 /* Evidence Checklist */
 .evidence-list{list-style:none;padding:0}
 .evidence-list li{line-height:1.8;padding-left:4px}
@@ -133,14 +133,10 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
     <div id="spec-host-info"></div>
     <h3>サービス定義</h3>
     <div id="spec-service-info"></div>
-    <h3>対応手順</h3>
-    <ol class="procedure-list">
-      <li>SSH接続</li>
-      <li>エビデンス取得</li>
-      <li>原因特定</li>
-      <li>復旧</li>
-      <li>復旧確認</li>
-    </ol>
+    <h3>状況確認</h3>
+    <ul class="runbook-list" id="spec-checks"></ul>
+    <h3>判断基準・対応内容</h3>
+    <ul class="runbook-list" id="spec-criteria"></ul>
     <h3>エビデンス</h3>
     <ul class="evidence-list" id="evidence-list"></ul>
   </div>
@@ -243,6 +239,18 @@ const SCENARIOS = [
       monitorSpec: {
         host: { name:'alpine-vm', os:'Alpine Linux 3.19', ip:'10.0.2.15 (NAT: 127.0.0.1:2222)', ssh:'ssh -p 2222 root@127.0.0.1' },
         service: { name:'CPU Load', plugin:'check_nrpe -H alpine-vm -c check_load', warning:'2.0,2.0,2.0', critical:'4.0,4.0,4.0', interval:'5min' },
+        runbook: {
+          checks: [
+            'w で load average を確認（1/5/15分平均）',
+            'ps auxfww または top -c でCPU消費の大きいプロセスを特定',
+            'プロセスが正規のもの（cron, app等）か不正なもの（マイニング, stress等）か確認',
+          ],
+          criteria: [
+            'load average > 4.0（コア数×2）で CRITICAL',
+            '不正・暴走プロセス → kill または killall で停止',
+            '正規プロセスの高負荷 → スケールアウト等を検討、一次対応はエスカレーション',
+          ]
+        },
       },
       resolved: false,
       checkResolution(state) {
@@ -324,6 +332,18 @@ const SCENARIOS = [
       monitorSpec: {
         host: { name:'alpine-vm', os:'Alpine Linux 3.19', ip:'10.0.2.15 (NAT: 127.0.0.1:2222)', ssh:'ssh -p 2222 root@127.0.0.1' },
         service: { name:'Disk Usage', plugin:'check_nrpe -H alpine-vm -c check_disk', warning:'80%', critical:'90%', interval:'10min' },
+        runbook: {
+          checks: [
+            'df -h で各パーティションの使用率を確認',
+            'du -sh /tmp/* /var/log/* 等で大きなディレクトリ・ファイルを特定',
+            'ログローテーション設定（logrotate）の確認',
+          ],
+          criteria: [
+            '使用率 90% 以上で CRITICAL',
+            '不要ファイル（tmpログ, 古いダンプ等）は削除可',
+            'アプリデータの場合はディスク拡張を検討、一次対応はエスカレーション',
+          ]
+        },
       },
       bigFileRemoved: false,
       resolved: false,
@@ -398,6 +418,18 @@ const SCENARIOS = [
       monitorSpec: {
         host: { name:'alpine-vm', os:'Alpine Linux 3.19', ip:'10.0.2.15 (NAT: 127.0.0.1:2222)', ssh:'ssh -p 2222 root@127.0.0.1' },
         service: { name:'HTTP', plugin:'check_http -H 127.0.0.1 -p 8081', warning:'-', critical:'Connection refused', interval:'3min' },
+        runbook: {
+          checks: [
+            'rc-service nginx status でサービス状態を確認',
+            'netstat -antp でポート 8081 の LISTEN 有無を確認',
+            '/var/log/nginx/error.log でエラー内容を確認',
+          ],
+          criteria: [
+            'Connection refused = プロセス停止（ポートが LISTEN していない）',
+            '設定エラーの場合 → nginx -t で検証後、設定を修正',
+            '設定正常なら → rc-service nginx start で起動',
+          ]
+        },
       },
       resolved: false,
       checkResolution(state) { return state.services.nginx === 'started'; },
@@ -471,6 +503,18 @@ const SCENARIOS = [
       monitorSpec: {
         host: { name:'sentinel', os:'Ubuntu 22.04', ip:'161.33.150.102 (Tailscale: 100.94.48.25)', ssh:'ssh niko@100.94.48.25' },
         service: { name:'Memory Usage', plugin:'check_by_ssh -H sentinel -C check_mem.sh', warning:'80%', critical:'90%', interval:'5min' },
+        runbook: {
+          checks: [
+            'free -m でメモリ使用率・swap 使用状況を確認',
+            'ps auxfww --sort=-rss | head でメモリ消費の大きいプロセスを特定',
+            'vmstat 1 で swap in/out（si/so）の発生頻度を確認',
+          ],
+          criteria: [
+            '使用率 90% 以上 or swap 大量使用で CRITICAL',
+            'リーク疑い・不正プロセス → kill で停止',
+            '正規プロセスの肥大化 → プロセス再起動 or メモリ増設を検討',
+          ]
+        },
       },
       resolved: false,
       checkResolution(state) {
@@ -574,6 +618,18 @@ Mar 02 18:44:55 minipc systemd[1]: niko-app.service: Main process exited, code=e
       monitorSpec: {
         host: { name:'minipc', os:'Manjaro Linux (i3wm)', ip:'100.85.53.125 (Tailscale)', ssh:'ssh niko@100.85.53.125' },
         service: { name:'niko-app', plugin:'check_http -H 100.85.53.125 -p 3939', warning:'-', critical:'Connection refused', interval:'3min' },
+        runbook: {
+          checks: [
+            'systemctl status niko-app でサービス状態を確認',
+            'journalctl -u niko-app -n 20 でエラーログを確認',
+            'ls /home/niko/niko-app/dist/ でビルド成果物の有無を確認',
+          ],
+          criteria: [
+            'Connection refused = プロセス停止（:3939 が LISTEN していない）',
+            'ビルド成果物欠損 → npm run build → systemctl restart niko-app',
+            '設定エラー → .env やソースを修正後、再ビルド＆再起動',
+          ]
+        },
       },
       needsBuild: true,
       rebuilt: false,
@@ -698,6 +754,20 @@ function renderSpecPanel(scenario, state) {
     <div class="spec-row"><span class="spec-label">Critical: </span><span class="spec-val">${spec.service.critical}</span></div>
     <div class="spec-row"><span class="spec-label">Interval: </span><span class="spec-val">${spec.service.interval}</span></div>
   `;
+  const checksEl = $('spec-checks');
+  checksEl.innerHTML = '';
+  spec.runbook.checks.forEach(text => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    checksEl.appendChild(li);
+  });
+  const criteriaEl = $('spec-criteria');
+  criteriaEl.innerHTML = '';
+  spec.runbook.criteria.forEach(text => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    criteriaEl.appendChild(li);
+  });
   renderEvidenceList();
 }
 
