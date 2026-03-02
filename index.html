@@ -67,7 +67,7 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 .term-line.error{color:var(--red)}
 .term-line.info{color:var(--cyan)}
 .term-line.success{color:#00cc00}
-.input-row{display:flex;align-items:center;padding:4px 16px 8px;flex-shrink:0;background:var(--bg)}
+.input-row{display:flex;align-items:center;padding:4px 16px 8px;position:sticky;bottom:0;background:var(--bg)}
 .input-row .prompt-text{color:var(--bright);white-space:nowrap;margin-right:4px;font-size:13px}
 .input-row input{flex:1;background:transparent;border:none;color:var(--fg);font-family:inherit;font-size:13px;outline:none;caret-color:var(--fg)}
 /* Mobile: spec panel toggle */
@@ -157,10 +157,11 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
       <span><span class="st-label">HINT </span><span class="st-val" id="st-hint">3</span></span>
       <span><span class="st-label">HOST </span><span class="st-val" id="st-host">local</span></span>
     </div>
-    <div class="terminal-wrap" id="terminal"></div>
-    <div class="input-row">
-      <span class="prompt-text" id="prompt-text">user@local:~$ </span>
-      <input type="text" id="cmd-input" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+    <div class="terminal-wrap" id="terminal">
+      <div class="input-row" id="input-row">
+        <span class="prompt-text" id="prompt-text">user@local:~$ </span>
+        <input type="text" id="cmd-input" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+      </div>
     </div>
   </div>
 </div>
@@ -626,6 +627,7 @@ let G = {
 // UI HELPERS
 // ═══════════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
+const inputRowEl = $('input-row');
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   $(id).classList.add('active');
@@ -636,7 +638,7 @@ function appendLine(text, cls='output') {
   const div = document.createElement('div');
   div.className = 'term-line ' + cls;
   div.textContent = text;
-  $('terminal').appendChild(div);
+  $('terminal').insertBefore(div, inputRowEl);
   $('terminal').scrollTop = $('terminal').scrollHeight;
 }
 
@@ -771,6 +773,7 @@ function startGame(scenario) {
   G.evidenceChecks = [false, false, false, false, false];
 
   $('terminal').innerHTML = '';
+  $('terminal').appendChild(inputRowEl);
   $('alert-label').textContent = `${scenario.nagios.label}  [${scenario.nagios.type}]`;
   $('alert-host').textContent = `Host: ${scenario.nagios.host} / Service: ${scenario.nagios.service} / State: ${scenario.nagios.state}`;
   $('alert-msg').textContent = scenario.nagios.output;
@@ -913,6 +916,7 @@ function execCommand(rawInput) {
 
   if (input === 'clear') {
     $('terminal').innerHTML = '';
+    $('terminal').appendChild(inputRowEl);
     return;
   }
 
