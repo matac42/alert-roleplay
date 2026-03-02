@@ -72,6 +72,8 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 .nav-btn:disabled:hover{background:transparent;color:var(--dim)}
 .nav-btn.primary{border-color:var(--bright);color:var(--bright)}
 .nav-btn.primary:hover{background:var(--bright);color:var(--bg)}
+.nav-reset{border-color:var(--border);color:var(--dim);font-size:12px;padding:6px 12px;min-width:auto;position:absolute;right:20px}
+.nav-reset:hover{border-color:var(--red);color:var(--red);background:transparent}
 .nav-pos{color:var(--dim);font-size:13px;min-width:60px;text-align:center}
 /* Back link */
 .back-link{display:inline-block;margin-bottom:20px;color:var(--dim);font-size:13px;text-decoration:none;transition:color .2s}
@@ -106,6 +108,7 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
   .flow{flex-direction:column;align-items:stretch}
   .flow-arrow{text-align:center;transform:rotate(90deg)}
   .flow-step{min-width:auto}
+  .nav-reset{position:static;margin-left:auto}
 }
 </style>
 </head>
@@ -213,7 +216,7 @@ Output:           CRITICAL - load average: 8.52, 6.31, 3.14</pre>
     <span class="fill-label">SSHの前に行うべき③のステップ名: </span>
     <input class="fill-input" placeholder="___">
     <button class="fill-check">確認</button>
-    <div class="fill-fb" data-ok="正解！対応の前にまずエビデンスを取得します。" data-ng="不正解。④は「エビデンス取得」です。対応前にシステム状態を記録することが重要です。"></div>
+    <div class="fill-fb" data-ok="正解！SSHでサーバーに入る前に、まずユーザーへの影響があるか確認します。影響の有無で対応の緊急度が変わります。" data-ng="不正解。③は「サービス影響確認」です。SSHの前にサイト表示やAPIの応答を確認し、ユーザー影響を把握します。"></div>
   </div>
 
   <div class="fill" data-answers='["報告"]'>
@@ -271,22 +274,24 @@ ops      pts/0    192.168.1.1      14:20    0.00s  0.01s  0.00s w</pre>
     <li><strong style="color:var(--yellow)">6.31</strong> — 直近 5分間の平均</li>
     <li><strong style="color:var(--cyan)">3.14</strong> — 直近 15分間の平均</li>
   </ul>
-  <p>load average はCPUの待ち行列の長さです。<strong>CPUコア数</strong>と比較して判断します。</p>
+  <p>load average は<strong>実行待ち + I/O待ちプロセスの平均数</strong>です。<strong>CPUコア数</strong>と比較して判断します。</p>
   <div class="note">例: 2コアCPUでload 8.52 → 各コアに約4.26の負荷。通常の4倍以上で明らかに過負荷。</div>
+  <div class="important">⚠ load average にはI/O待ち（D状態）のプロセスも含まれる。load が高い = CPU負荷が高い とは限らない。vmstat の wa 列やプロセスの STAT 列（D=I/O待ち）も合わせて確認すること。</div>
 
-  <div class="quiz" data-correct="A">
-    <div class="quiz-q">Q. 4コアCPUのサーバーで load average 3.80 の場合、状態は？</div>
-    <button class="quiz-opt" data-val="A">A) 正常範囲内（コア数以下）</button>
-    <button class="quiz-opt" data-val="B">B) 過負荷（コア数を超えている）</button>
-    <button class="quiz-opt" data-val="C">C) load average とコア数は無関係</button>
-    <div class="quiz-fb" data-ok="正解！4コアでload 3.80は1コアあたり0.95なので正常範囲内です。" data-ng="不正解。4コアCPUなら load 4.0 までが目安。3.80はコア数以下なので正常範囲です。"></div>
+  <div class="quiz" data-correct="B">
+    <div class="quiz-q">Q. 以下の w 出力を見て、このサーバーの状態として最も適切なものは？
+<br><code>load average: 12.50, 11.80, 4.20</code>（2コアCPU）</div>
+    <button class="quiz-opt" data-val="A">A) 負荷は安定している</button>
+    <button class="quiz-opt" data-val="B">B) 負荷が急上昇中で、直近で何か起きた</button>
+    <button class="quiz-opt" data-val="C">C) 負荷は下がりつつある</button>
+    <div class="quiz-fb" data-ok="正解！1分平均(12.50) &gt; 5分平均(11.80) &gt;&gt; 15分平均(4.20)。15分前まで低かった負荷が急上昇しており、直近で何かが起きたことがわかります。3つの値のトレンドを読むのがポイントです。" data-ng="不正解。1分(12.50)と5分(11.80)が高く、15分(4.20)が低い = 直近で負荷が急上昇したパターンです。3つの値の推移から変化の方向を読み取ります。"></div>
   </div>
 
-  <div class="fill" data-answers='["w","uptime"]'>
-    <span class="fill-label">load average を確認する最短コマンド: </span>
+  <div class="fill" data-answers='["15","15分"]'>
+    <span class="fill-label">load average の3つの値のうち、最も長期的な傾向を示すのは何分平均？ </span>
     <input class="fill-input" placeholder="___">
     <button class="fill-check">確認</button>
-    <div class="fill-fb" data-ok="正解！w（または uptime）で load average を素早く確認できます。" data-ng="不正解。w コマンドが最も手軽です（uptime でも可）。"></div>
+    <div class="fill-fb" data-ok="正解！15分平均です。1分・5分・15分の3つを比較することで、負荷の変化トレンド（上昇中か下降中か）を読み取れます。" data-ng="不正解。15分平均が最も長期の傾向を示します。1分・5分・15分を比較して負荷のトレンドを判断します。"></div>
   </div>
 </div>
 
@@ -328,27 +333,29 @@ root       893 <span class="hl-red">97.8</span>  0.1   7400  1080 ?        R    
     <div class="quiz-fb" data-ok="正解！まずCOMMAND列でプロセスが正規のものか不正なものかを確認します。いきなり停止するのは危険です。" data-ng="不正解。まずCOMMAND列でプロセスの正体を確認します。正規のプロセスを誤って停止すると障害が悪化します。"></div>
   </div>
 
-  <div class="fill" data-answers='["ps auxfww","ps aux","ps auxfww","ps auxf"]'>
-    <span class="fill-label">全プロセスの一覧を表示するコマンド: </span>
+  <div class="fill" data-answers='["892","PID 892"]'>
+    <span class="fill-label">上の出力例で、最もCPUを消費している親プロセスのPIDは？ </span>
     <input class="fill-input" placeholder="___">
     <button class="fill-check">確認</button>
-    <div class="fill-fb" data-ok="正解！ps auxfww でツリー表示付きの全プロセス一覧が見られます。" data-ng="不正解。ps auxfww（または ps aux）で全プロセスの一覧を表示します。"></div>
+    <div class="fill-fb" data-ok="正解！PID 892 の stress-ng が %CPU 98.2 で最も高く、PID 893 はその子プロセス（ツリー表示の \\_ で判別）です。kill するならまず親の 892 です。" data-ng="不正解。PID 892 が %CPU 98.2 で最も高い親プロセスです。893 は \\_ 表記から 892 の子プロセスとわかります。"></div>
   </div>
 </div>
 
 <!-- ======================== SLIDE 6: エビデンス(3) sudo netstat -antp ======================== -->
 <div class="slide" data-slide="6">
-  <h2>06 / エビデンス取得 (3) — sudo netstat -antp</h2>
+  <h2>06 / エビデンス取得 (3) — netstat / ss</h2>
   <p>ネットワークの接続状態とLISTENポートを確認するコマンドです。</p>
 
   <h3>コマンド</h3>
-  <pre><span class="hl-green">$</span> sudo netstat -antp</pre>
+  <pre><span class="hl-green">$</span> sudo netstat -antp   <span class="hl-cyan"># 従来のコマンド（net-tools）</span>
+<span class="hl-green">$</span> sudo ss -antp        <span class="hl-cyan"># 新しいコマンド（iproute2、推奨）</span></pre>
   <ul>
     <li><code>-a</code> — 全ての接続を表示</li>
     <li><code>-n</code> — アドレスをIPで表示（名前解決しない）</li>
     <li><code>-t</code> — TCP接続のみ</li>
     <li><code>-p</code> — プロセス名/PIDを表示</li>
   </ul>
+  <div class="note">💡 <code>ss</code> は <code>netstat</code> の後継コマンドです。最近のLinuxディストリビューションでは net-tools（netstat）がインストールされていないことがあるため、<code>ss</code> も使えるようにしておくと安心です。オプションはほぼ同じ。</div>
   <div class="important">⚠ <code>-p</code> オプションには <strong>sudo</strong> が必要です。sudo なしだと他ユーザーのプロセス名が表示されません。</div>
 
   <h3>出力例</h3>
@@ -359,18 +366,18 @@ tcp        0      0 0.0.0.0:<span class="hl-cyan">5666</span>       0.0.0.0:*   
   <p><code>LISTEN</code> 状態のポートがサービスが待ち受けているポートです。期待するサービスがLISTENしていなければ障害の手がかりになります。</p>
 
   <div class="quiz" data-correct="C">
-    <div class="quiz-q">Q. netstat -antp に sudo を付ける理由は？</div>
-    <button class="quiz-opt" data-val="A">A) root でないとネットワーク情報が見えない</button>
-    <button class="quiz-opt" data-val="B">B) -a オプションに特権が必要</button>
-    <button class="quiz-opt" data-val="C">C) -p で他ユーザーのプロセス名を表示するため</button>
-    <div class="quiz-fb" data-ok="正解！-p オプションで全プロセスのPID/名前を表示するにはroot権限が必要です。" data-ng="不正解。-p オプションで他ユーザーのプロセス情報を表示するには sudo が必要です。"></div>
+    <div class="quiz-q">Q. 上の出力で、nginx がリクエストを待ち受けているポート番号は？</div>
+    <button class="quiz-opt" data-val="A">A) 22</button>
+    <button class="quiz-opt" data-val="B">B) 5666</button>
+    <button class="quiz-opt" data-val="C">C) 8081</button>
+    <div class="quiz-fb" data-ok="正解！PID/Program 列が 168/nginx の行を見ると、Local Address が 0.0.0.0:8081 で LISTEN しています。22はsshd、5666はnrpeです。" data-ng="不正解。PID/Program が nginx の行を見てください。168/nginx が 0.0.0.0:8081 で LISTEN しています。"></div>
   </div>
 
-  <div class="fill" data-answers='["LISTEN"]'>
-    <span class="fill-label">サービスが接続を待ち受けている状態: </span>
+  <div class="fill" data-answers='["ss","ss -antp","sudo ss -antp"]'>
+    <span class="fill-label">netstat が使えない環境での代替コマンド: </span>
     <input class="fill-input" placeholder="___">
     <button class="fill-check">確認</button>
-    <div class="fill-fb" data-ok="正解！LISTEN 状態はサービスが接続を受け付ける準備ができていることを示します。" data-ng="不正解。接続待ち受け状態は「LISTEN」です。"></div>
+    <div class="fill-fb" data-ok="正解！ss は netstat の後継で、iproute2 パッケージに含まれるため、ほぼ全てのLinux環境で使えます。" data-ng="不正解。ss コマンドが netstat の代替です。オプションもほぼ同じで、より新しい環境で標準的に使えます。"></div>
   </div>
 </div>
 
@@ -411,11 +418,11 @@ procs ---memory--- ---swap-- -----io---- -system-- ------cpu-----
     <div class="quiz-fb" data-ok="正解！wa（IO wait）はCPUがディスクI/Oを待っている時間の割合です。" data-ng="不正解。wa はIO wait = ディスクI/Oの待ち時間です。ディスクがボトルネックです。"></div>
   </div>
 
-  <div class="fill" data-answers='["swpd"]'>
-    <span class="fill-label">vmstat でスワップ使用量を示す列: </span>
+  <div class="fill" data-answers='["CPU","cpu","us"]'>
+    <span class="fill-label">上の vmstat 出力で us=95, id=0 です。ボトルネックはどのリソース？ </span>
     <input class="fill-input" placeholder="___">
     <button class="fill-check">確認</button>
-    <div class="fill-fb" data-ok="正解！swpd がスワップ使用量（KB）を示します。0以外ならメモリ不足の兆候です。" data-ng="不正解。swpd 列がスワップ使用量です。"></div>
+    <div class="fill-fb" data-ok="正解！us（ユーザー空間CPU）が95%でid（アイドル）が0% = CPUが飽和しています。wa が低いのでI/O待ちではなく、純粋にCPU処理で詰まっている状態です。" data-ng="不正解。us=95（CPU使用率95%）、id=0（アイドル0%）はCPUが飽和している状態です。wa=2と低いのでディスクI/Oではありません。"></div>
   </div>
 </div>
 
@@ -458,11 +465,11 @@ Swap:           0B      0B      0B</pre>
     <div class="quiz-fb" data-ok="正解！available はバッファ/キャッシュの解放可能分を含む、実際に使えるメモリ量です。" data-ng="不正解。free ではなく available が実際に利用可能なメモリ量です。buff/cache の解放可能分が含まれます。"></div>
   </div>
 
-  <div class="fill" data-answers='["df -h","df","df -h"]'>
-    <span class="fill-label">ディスク使用量を確認するコマンド: </span>
+  <div class="fill" data-answers='["312M","312","312m"]'>
+    <span class="fill-label">上の free 出力で、実際に利用可能なメモリ量は？ </span>
     <input class="fill-input" placeholder="___">
     <button class="fill-check">確認</button>
-    <div class="fill-fb" data-ok="正解！df -h でファイルシステムごとの使用量を確認できます。" data-ng="不正解。df（df -h）コマンドでディスク使用量を確認します。"></div>
+    <div class="fill-fb" data-ok="正解！available の 312M です。free(112M) ではなく available を見るのがポイント。buff/cache の解放可能分が含まれるため、実際にはもっと使えます。" data-ng="不正解。available 列の 312M が正解です。free(112M) ではなく available を見ましょう。buff/cache が解放可能なため、実際の利用可能量はfreeより大きくなります。"></div>
   </div>
 </div>
 
@@ -495,11 +502,11 @@ Swap:           0B      0B      0B</pre>
     <div class="quiz-fb" data-ok="正解！サービスの起動・停止・再起動はシステムに影響するため管理者権限が必要です。statusの確認は一般ユーザーでも可能です。" data-ng="不正解。systemctl 自体は一般ユーザーでも使えますが、start/stop/restart はシステムに影響するため sudo が必要です。"></div>
   </div>
 
-  <div class="fill" data-answers='["journalctl","journalctl -u"]'>
-    <span class="fill-label">サービスのログを確認するコマンド: </span>
+  <div class="fill" data-answers='["status","systemctl status"]'>
+    <span class="fill-label">systemctl のサブコマンドのうち、sudo なしで実行できるのは？ </span>
     <input class="fill-input" placeholder="___">
     <button class="fill-check">確認</button>
-    <div class="fill-fb" data-ok="正解！journalctl -u サービス名 でサービスのログを確認できます。" data-ng="不正解。journalctl コマンドでサービスのログを確認します。"></div>
+    <div class="fill-fb" data-ok="正解！status は確認のみなので一般ユーザーでも実行可能です。start / stop / restart はシステムに影響するため sudo が必要です。" data-ng="不正解。status が sudo なしで実行できます。サービスの状態を見るだけなので権限は不要です。"></div>
   </div>
 </div>
 
@@ -518,10 +525,14 @@ Swap:           0B      0B      0B</pre>
   </ul>
   <div class="important">⚠ kill する前に必ず ps で PID と COMMAND を確認すること。誤ったプロセスを停止すると障害が悪化します。</div>
 
-  <h3>rm — ファイル削除（ディスク容量対応時）</h3>
-  <pre><span class="hl-green">$</span> sudo rm /var/log/app/huge.log     <span class="hl-cyan"># ファイル削除</span>
-<span class="hl-green">$</span> sudo truncate -s 0 /var/log/app/huge.log <span class="hl-cyan"># ファイルを空にする（推奨）</span></pre>
-  <p>ログファイルは削除より <code>truncate</code> で空にする方が安全です（ファイルディスクリプタが保持される）。</p>
+  <h3>ディスク容量対応 — ログファイル</h3>
+  <p>ログが肥大化してディスクを圧迫している場合、まず <strong>logrotate の設定を確認</strong>します。</p>
+  <pre><span class="hl-green">$</span> cat /etc/logrotate.d/nginx       <span class="hl-cyan"># ログローテート設定の確認</span>
+<span class="hl-green">$</span> sudo logrotate -f /etc/logrotate.d/nginx <span class="hl-cyan"># 手動でローテート実行</span></pre>
+  <p>logrotate で対処できない緊急時のみ、以下の方法を使います。</p>
+  <pre><span class="hl-green">$</span> sudo truncate -s 0 /var/log/app/huge.log <span class="hl-cyan"># ファイルを空にする（FDが保持される）</span>
+<span class="hl-green">$</span> sudo rm /var/log/app/huge.log             <span class="hl-cyan"># ファイル削除（FDが残るとディスクが解放されない場合あり）</span></pre>
+  <div class="note">💡 rm でファイルを削除しても、プロセスがファイルを開いたままだとディスク容量は解放されません。truncate の方が安全です。根本対策は logrotate の設定見直し。</div>
 
   <h3>sudo の注意点</h3>
   <ul>
@@ -538,11 +549,11 @@ Swap:           0B      0B      0B</pre>
     <div class="quiz-fb" data-ok="正解！まずSIGTERM（kill PID）で正常終了を試み、応答しない場合のみ kill -9 を使います。" data-ng="不正解。まずkill PID（SIGTERM）で正常終了を試みます。いきなり kill -9 は最終手段です。"></div>
   </div>
 
-  <div class="fill" data-answers='["truncate","truncate -s 0"]'>
-    <span class="fill-label">ログファイルを安全に空にするコマンド: </span>
+  <div class="fill" data-answers='["logrotate","ログローテート","logrotate -f"]'>
+    <span class="fill-label">ログ肥大化の対応で、truncate/rm の前にまず確認・実行すべき仕組みは？ </span>
     <input class="fill-input" placeholder="___">
     <button class="fill-check">確認</button>
-    <div class="fill-fb" data-ok="正解！truncate -s 0 でファイルディスクリプタを保持したままファイルを空にできます。" data-ng="不正解。truncate -s 0 コマンドでファイルを安全に空にできます。rm より安全です。"></div>
+    <div class="fill-fb" data-ok="正解！まず logrotate の設定を確認し、手動ローテートを試みます。truncate や rm は logrotate で対処できない緊急時の手段です。" data-ng="不正解。logrotate です。ログの定期圧縮・削除の仕組みがすでにあるはずなので、まずその設定を確認し、手動実行（logrotate -f）を試みます。"></div>
   </div>
 </div>
 
@@ -590,46 +601,56 @@ Swap:           0B      0B      0B</pre>
 <!-- ======================== SLIDE 12: 総合テスト ======================== -->
 <div class="slide" data-slide="12">
   <h2>12 / 総合テスト</h2>
-  <p>ここまでの内容を5問のテストで確認します。</p>
-
-  <div class="quiz" data-correct="C" data-final="1">
-    <div class="quiz-q">Q1. Nagiosアラートで「State: WARNING」の場合、CRITICALと比べて？</div>
-    <button class="quiz-opt" data-val="A">A) WARNINGの方が緊急度が高い</button>
-    <button class="quiz-opt" data-val="B">B) 両者は同じ緊急度</button>
-    <button class="quiz-opt" data-val="C">C) CRITICALの方が緊急度が高い</button>
-    <div class="quiz-fb" data-ok="正解！WARNING &lt; CRITICAL の順で緊急度が上がります。" data-ng="不正解。緊急度は WARNING &lt; CRITICAL です。CRITICALが最も緊急です。"></div>
-  </div>
+  <p>実際のアラート対応シナリオに基づく5問です。状況を読み取って判断してください。</p>
 
   <div class="quiz" data-correct="B" data-final="1">
-    <div class="quiz-q">Q2. 2コアCPUのサーバーで load average が 6.00 の場合、1コアあたりの負荷は？</div>
-    <button class="quiz-opt" data-val="A">A) 2.00</button>
-    <button class="quiz-opt" data-val="B">B) 3.00</button>
-    <button class="quiz-opt" data-val="C">C) 6.00</button>
-    <div class="quiz-fb" data-ok="正解！6.00 ÷ 2コア = 1コアあたり3.00 の負荷。コア数を大幅に超えており過負荷です。" data-ng="不正解。load average ÷ コア数 = 1コアあたりの負荷。6.00 ÷ 2 = 3.00 です。"></div>
+    <div class="quiz-q">Q1. 以下のアラートを受信しました。最初にやるべきことは？
+<br><br><code>Type: PROBLEM | Host: app-01 | Service: HTTP | State: CRITICAL</code>
+<br><code>Output: CRITICAL - Socket timeout after 10 seconds</code></div>
+    <button class="quiz-opt" data-val="A">A) すぐに SSH で app-01 に接続する</button>
+    <button class="quiz-opt" data-val="B">B) ブラウザや curl でサイトの表示を確認する</button>
+    <button class="quiz-opt" data-val="C">C) nginx を再起動する</button>
+    <div class="quiz-fb" data-ok="正解！HTTP の CRITICAL = サイトが見えていない可能性があります。まずサービス影響の有無を確認し、ユーザー影響があるなら緊急度を上げて対応します。SSHはその次です。" data-ng="不正解。HTTP監視のCRITICALなので、まずサイトが実際に見えるか確認します。サービス影響の確認がSSHより先です。"></div>
+  </div>
+
+  <div class="quiz" data-correct="C" data-final="1">
+    <div class="quiz-q">Q2. SSH接続後、以下の情報を得ました。原因として最も疑わしいのは？
+<br><br><code>load average: 0.10, 0.08, 0.05</code>（2コアCPU）
+<br><code>free -h: available 380M / total 460M</code>
+<br><code>df -h: / 98% used (Avail: 40M)</code></div>
+    <button class="quiz-opt" data-val="A">A) CPU過負荷</button>
+    <button class="quiz-opt" data-val="B">B) メモリ不足</button>
+    <button class="quiz-opt" data-val="C">C) ディスク容量不足</button>
+    <div class="quiz-fb" data-ok="正解！load average は低く(0.10)、メモリも余裕あり(380M available)ですが、ディスクが98%使用で残り40MBしかありません。ログ書き込みやDB操作がディスクフルで失敗している可能性が高いです。" data-ng="不正解。load(0.10)は低い=CPU問題なし、available(380M)も余裕あり=メモリ問題なし。df の98%使用・残り40MBがディスク容量不足を示しています。"></div>
   </div>
 
   <div class="quiz" data-correct="A" data-final="1">
-    <div class="quiz-q">Q3. ディスク使用量 100% のとき、まず実行すべきコマンドは？</div>
-    <button class="quiz-opt" data-val="A">A) du -sh /* で容量を消費しているディレクトリを特定</button>
-    <button class="quiz-opt" data-val="B">B) rm -rf /tmp/* ですぐに削除</button>
-    <button class="quiz-opt" data-val="C">C) サーバーを再起動する</button>
-    <div class="quiz-fb" data-ok="正解！まず du で原因を特定してから、安全に削除・truncateします。" data-ng="不正解。まず du -sh /* でどのディレクトリが容量を消費しているか特定します。闇雲に削除するのは危険です。"></div>
-  </div>
-
-  <div class="quiz" data-correct="C" data-final="1">
-    <div class="quiz-q">Q4. 一次対応の最後に行うべきことは？</div>
-    <button class="quiz-opt" data-val="A">A) サーバーからログアウトする</button>
-    <button class="quiz-opt" data-val="B">B) Nagiosのアラートを手動でクリアする</button>
-    <button class="quiz-opt" data-val="C">C) 発生時刻・原因・対応内容・現状を報告する</button>
-    <div class="quiz-fb" data-ok="正解！対応フローの最後は報告です。発生時刻・原因・対応内容・現在の状態をまとめて報告します。" data-ng="不正解。最後は報告です。発生時刻・原因・対応内容・現在の状態を関係者に共有します。"></div>
+    <div class="quiz-q">Q3. ps auxfww で以下のプロセスを発見しました。対応として適切なのは？
+<br><br><code>root  5412  0.0  0.1  kworker/0:1</code>
+<br><code>root  8831 99.5  0.1  /tmp/.x/xmrig --donate-level=0</code>
+<br><code>www   1204  2.1  3.2  /usr/sbin/nginx: worker</code></div>
+    <button class="quiz-opt" data-val="A">A) エビデンスを保全してエスカレーション（セキュリティインシデントの疑い）</button>
+    <button class="quiz-opt" data-val="B">B) kill -9 8831 ですぐに停止する</button>
+    <button class="quiz-opt" data-val="C">C) CPU使用率が高いだけなので様子を見る</button>
+    <div class="quiz-fb" data-ok="正解！xmrig は暗号通貨マイニングソフトで、/tmp 配下から実行されている不審なプロセスです。セキュリティインシデントの可能性が高いため、まずエビデンス（ps, netstat, ログ等）を保全してからエスカレーションします。勝手に kill すると証拠が消える可能性もあります。" data-ng="不正解。/tmp/.x/xmrig はマイニングソフトであり、不正にインストールされた可能性が高いです。セキュリティインシデントとしてエビデンスを保全し、エスカレーションが正しい対応です。"></div>
   </div>
 
   <div class="quiz" data-correct="B" data-final="1">
-    <div class="quiz-q">Q5. vmstat で si/so が高い値を示している場合、何が起きている？</div>
-    <button class="quiz-opt" data-val="A">A) ディスクが壊れている</button>
-    <button class="quiz-opt" data-val="B">B) メモリ不足でスワップが頻発している</button>
-    <button class="quiz-opt" data-val="C">C) ネットワークが混雑している</button>
-    <div class="quiz-fb" data-ok="正解！si（swap in）/ so（swap out）が高い = メモリ不足でディスクとの間でスワップが頻発しています。" data-ng="不正解。si/so はスワップイン/アウトです。メモリ不足のため、ディスクとの間でデータの入れ替えが起きています。"></div>
+    <div class="quiz-q">Q4. vmstat 1 の出力が以下のとき、何が起きている？
+<br><br><code> r  b  swpd   free   si   so   us  sy  id  wa</code>
+<br><code> 0  5  1240K  8200  820  640    2   3   5  90</code></div>
+    <button class="quiz-opt" data-val="A">A) CPU負荷が高い（us が高い）</button>
+    <button class="quiz-opt" data-val="B">B) ディスクI/Oがボトルネックで、メモリ不足もある</button>
+    <button class="quiz-opt" data-val="C">C) システムは正常に動作している</button>
+    <div class="quiz-fb" data-ok="正解！wa=90 は CPU時間の90%がI/O待ち、b=5 は5プロセスがI/Oブロック中。さらに swpd=1240K, si=820, so=640 でスワップが頻発 = メモリ不足でディスクへのスワップが大量発生し、それがさらにI/O待ちを悪化させている状態です。" data-ng="不正解。wa=90(I/O待ち90%)、b=5(I/Oブロック中が5プロセス)、swpd/si/so が高い = メモリ不足でスワップが頻発し、ディスクI/Oがボトルネックになっています。us=2なのでCPU自体の問題ではありません。"></div>
+  </div>
+
+  <div class="quiz" data-correct="C" data-final="1">
+    <div class="quiz-q">Q5. CPU高騰アラートの対応で、原因プロセス（stress-ng, PID 892）を kill して復旧を確認しました。次にやるべきことは？</div>
+    <button class="quiz-opt" data-val="A">A) SSHを切断して終了</button>
+    <button class="quiz-opt" data-val="B">B) サーバーを念のため再起動する</button>
+    <button class="quiz-opt" data-val="C">C) 復旧後のエビデンスを取得し、発生時刻・原因・対応内容を報告する</button>
+    <div class="quiz-fb" data-ok="正解！復旧確認後は、対応後のエビデンス（w で load 正常化を確認等）を取得し、発生時刻・原因・対応内容・現在の状態をまとめて関係者に報告します。報告なしで終わると、他のメンバーが状況を把握できません。" data-ng="不正解。対応フローの最後は報告です。復旧後のエビデンスを取得し、発生時刻・原因・対応内容・現状を関係者に共有します。不要な再起動はダウンタイムを増やすだけです。"></div>
   </div>
 
   <div id="final-score" style="display:none;margin-top:24px">
@@ -650,6 +671,7 @@ Swap:           0B      0B      0B</pre>
   <button class="nav-btn" id="nav-prev" onclick="prevSlide()">← 前へ</button>
   <span class="nav-pos" id="nav-pos">0 / 12</span>
   <button class="nav-btn primary" id="nav-next" onclick="nextSlide()">次へ →</button>
+  <button class="nav-btn nav-reset" onclick="confirmReset()">リセット</button>
 </div>
 
 <script>
@@ -889,6 +911,10 @@ function loadProgress() {
       answers = data.answers || {};
     }
   } catch (e) { /* ignore */ }
+}
+
+function confirmReset() {
+  if (confirm('全ての解答をリセットしますか？')) resetProgress();
 }
 
 function resetProgress() {
