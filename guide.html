@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学習ガイド — Alert Response Roleplay</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0a;--fg:#00ff41;--dim:#005500;--bright:#33ff66;
+  --red:#ff3333;--yellow:#ffcc00;--cyan:#00ccff;--white:#e0e0e0;
+  --panel:#111;--border:#333;--input-bg:#0d0d0d;
+}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier New',monospace;font-size:14px}
+/* Progress bar */
+.progress-bar{position:fixed;top:0;left:0;height:3px;background:var(--bright);transition:width .4s ease;z-index:200}
+/* Slide container */
+.slide-container{max-width:780px;margin:0 auto;padding:48px 20px 100px;min-height:100vh}
+.slide{display:none}
+.slide.active{display:block}
+/* Typography */
+.slide h2{color:var(--bright);font-size:22px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px}
+.slide h3{color:var(--cyan);font-size:16px;margin:20px 0 8px}
+.slide p,.slide li{color:var(--white);font-size:14px;line-height:1.7}
+.slide ul,.slide ol{padding-left:24px;margin:8px 0}
+.slide li{margin:4px 0}
+.slide code{background:#1a1a1a;color:var(--fg);padding:2px 6px;font-size:13px;border:1px solid var(--border)}
+.slide pre{background:#0d0d0d;border:1px solid var(--border);padding:12px;margin:12px 0;overflow-x:auto;font-size:13px;line-height:1.5;color:var(--white)}
+.slide pre .hl{color:var(--yellow)}
+.slide pre .hl-red{color:var(--red)}
+.slide pre .hl-green{color:var(--bright)}
+.slide pre .hl-cyan{color:var(--cyan)}
+.slide .note{background:#1a1a00;border:1px solid #444400;padding:10px 14px;margin:12px 0;color:var(--yellow);font-size:13px;line-height:1.5}
+.slide .important{background:#1a0000;border:1px solid #440000;padding:10px 14px;margin:12px 0;color:var(--red);font-size:13px;line-height:1.5}
+/* Flow diagram */
+.flow{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;align-items:center}
+.flow-step{background:var(--panel);border:1px solid var(--border);padding:8px 14px;color:var(--cyan);font-size:13px;text-align:center;min-width:100px}
+.flow-step .step-num{color:var(--dim);font-size:11px;display:block}
+.flow-arrow{color:var(--dim);font-size:18px}
+/* Quiz MC */
+.quiz{background:var(--panel);border:1px solid var(--border);padding:16px;margin:16px 0}
+.quiz-q{color:var(--bright);font-size:14px;margin-bottom:12px;line-height:1.5}
+.quiz-opt{display:block;width:100%;text-align:left;background:var(--input-bg);border:1px solid var(--border);color:var(--white);font-family:inherit;font-size:13px;padding:10px 14px;margin:4px 0;cursor:pointer;transition:border-color .2s,background .2s}
+.quiz-opt:hover:not(.locked){border-color:var(--fg);background:#1a1a1a}
+.quiz-opt.correct{border-color:var(--bright);background:#001a00;color:var(--bright)}
+.quiz-opt.wrong{border-color:var(--red);background:#1a0000;color:var(--red)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct{opacity:1}
+.quiz-fb{margin-top:10px;font-size:13px;line-height:1.5;display:none}
+.quiz-fb.show{display:block}
+.quiz-fb.ok{color:var(--bright)}
+.quiz-fb.ng{color:var(--red)}
+/* Fill-in */
+.fill{background:var(--panel);border:1px solid var(--border);padding:16px;margin:16px 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fill-label{color:var(--white);font-size:14px}
+.fill-input{background:var(--input-bg);border:1px solid var(--border);color:var(--fg);font-family:inherit;font-size:14px;padding:6px 10px;width:180px;outline:none}
+.fill-input:focus{border-color:var(--fg)}
+.fill-input.correct{border-color:var(--bright);color:var(--bright)}
+.fill-input.wrong{border-color:var(--red);color:var(--red)}
+.fill-check{background:transparent;border:1px solid var(--fg);color:var(--fg);font-family:inherit;font-size:13px;padding:6px 14px;cursor:pointer;transition:all .2s}
+.fill-check:hover{background:var(--fg);color:var(--bg)}
+.fill-check:disabled{opacity:.5;cursor:default}
+.fill-fb{width:100%;margin-top:6px;font-size:13px;display:none}
+.fill-fb.show{display:block}
+.fill-fb.ok{color:var(--bright)}
+.fill-fb.ng{color:var(--red)}
+/* Nav bar */
+.nav-bar{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:16px;padding:12px 20px;z-index:100}
+.nav-btn{background:transparent;border:1px solid var(--fg);color:var(--fg);font-family:inherit;font-size:14px;padding:8px 20px;cursor:pointer;transition:all .2s;min-width:80px}
+.nav-btn:hover{background:var(--fg);color:var(--bg)}
+.nav-btn:disabled{opacity:.3;cursor:default;border-color:var(--border);color:var(--dim)}
+.nav-btn:disabled:hover{background:transparent;color:var(--dim)}
+.nav-btn.primary{border-color:var(--bright);color:var(--bright)}
+.nav-btn.primary:hover{background:var(--bright);color:var(--bg)}
+.nav-pos{color:var(--dim);font-size:13px;min-width:60px;text-align:center}
+/* Back link */
+.back-link{display:inline-block;margin-bottom:20px;color:var(--dim);font-size:13px;text-decoration:none;transition:color .2s}
+.back-link:hover{color:var(--fg)}
+/* Intro */
+.intro-title{color:var(--bright);font-size:28px;text-align:center;margin:40px 0 8px}
+.intro-sub{color:var(--dim);text-align:center;font-size:14px;margin-bottom:32px}
+.intro-list{list-style:none;padding:0;max-width:500px;margin:0 auto 24px}
+.intro-list li{color:var(--white);font-size:14px;padding:8px 0;border-bottom:1px solid var(--border)}
+.intro-list li span.il-num{color:var(--cyan);margin-right:8px}
+.intro-start{display:block;margin:24px auto 0;background:transparent;border:1px solid var(--bright);color:var(--bright);font-family:inherit;font-size:16px;padding:12px 32px;cursor:pointer;transition:all .2s}
+.intro-start:hover{background:var(--bright);color:var(--bg)}
+/* Score */
+.score-display{text-align:center;margin:24px 0}
+.score-num{font-size:48px;font-weight:bold}
+.grade-S{color:#ffcc00}.grade-A{color:#00ff41}.grade-B{color:#00ccff}.grade-C{color:var(--white)}.grade-D{color:#ff3333}
+.score-detail{color:var(--dim);font-size:14px;margin-top:8px}
+.score-msg{color:var(--white);font-size:14px;margin:16px 0;text-align:center;line-height:1.6}
+.rp-link{display:block;margin:24px auto 0;background:transparent;border:1px solid var(--bright);color:var(--bright);font-family:inherit;font-size:16px;padding:12px 32px;cursor:pointer;text-decoration:none;text-align:center;max-width:320px;transition:all .2s}
+.rp-link:hover{background:var(--bright);color:var(--bg)}
+.reset-link{display:block;margin:12px auto 0;color:var(--dim);font-size:13px;text-decoration:none;text-align:center;cursor:pointer;transition:color .2s}
+.reset-link:hover{color:var(--fg)}
+/* Responsive */
+@media(max-width:600px){
+  html{font-size:13px}
+  .slide-container{padding:40px 12px 90px}
+  .intro-title{font-size:22px;margin-top:20px}
+  .nav-bar{padding:10px 12px;gap:10px}
+  .nav-btn{padding:8px 14px;font-size:13px;min-width:60px}
+  .fill{flex-direction:column;align-items:stretch}
+  .fill-input{width:100%}
+  .flow{flex-direction:column;align-items:stretch}
+  .flow-arrow{text-align:center;transform:rotate(90deg)}
+  .flow-step{min-width:auto}
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress-bar"></div>
+
+<div class="slide-container" id="slide-container">
+
+<!-- ======================== SLIDE 0: イントロ ======================== -->
+<div class="slide" data-slide="0">
+  <a href="index.html" class="back-link">← ロールプレイに戻る</a>
+  <div class="intro-title">ALERT RESPONSE GUIDE</div>
+  <div class="intro-sub">Nagios監視アラート 一次対応の基本を学ぶ</div>
+  <p style="color:var(--white);text-align:center;margin-bottom:24px">このガイドでは、監視アラートを受信してから報告するまでの一次対応フローと、必要なLinuxコマンドをステップバイステップで学びます。</p>
+  <ul class="intro-list">
+    <li><span class="il-num">01-02</span> アラートの読み方と対応フロー</li>
+    <li><span class="il-num">03</span> SSH接続</li>
+    <li><span class="il-num">04-08</span> エビデンス取得コマンド（w, ps, netstat, top, df, free）</li>
+    <li><span class="il-num">09-10</span> サービス管理と対応アクション</li>
+    <li><span class="il-num">11</span> エスカレーション判断</li>
+    <li><span class="il-num">12</span> 総合テスト</li>
+  </ul>
+  <button class="intro-start" onclick="goSlide(1)">学習を始める →</button>
+</div>
+
+<!-- ======================== SLIDE 1: Nagiosアラートの読み方 ======================== -->
+<div class="slide" data-slide="1">
+  <h2>01 / Nagiosアラートの読み方</h2>
+  <p>Nagiosからのアラートメールには、以下の情報が含まれます。</p>
+  <pre>***** Nagios Alert *****
+
+Notification Type: <span class="hl">PROBLEM</span>
+Host:             <span class="hl-cyan">web-01</span>
+Service:          <span class="hl-cyan">CPU Load</span>
+State:            <span class="hl-red">CRITICAL</span>
+Output:           CRITICAL - load average: 8.52, 6.31, 3.14</pre>
+  <h3>各フィールドの意味</h3>
+  <ul>
+    <li><strong>Notification Type</strong> — <code>PROBLEM</code>（障害発生）/ <code>RECOVERY</code>（復旧）</li>
+    <li><strong>Host</strong> — アラートが発生したホスト名</li>
+    <li><strong>Service</strong> — 監視しているサービス名（CPU Load, HTTP, Disk Usage 等）</li>
+    <li><strong>State</strong> — <code>WARNING</code> / <code>CRITICAL</code> / <code>UNKNOWN</code></li>
+    <li><strong>Output</strong> — 監視プラグインの出力（具体的な数値やメッセージ）</li>
+  </ul>
+
+  <div class="quiz" data-correct="B">
+    <div class="quiz-q">Q1. 「Notification Type: RECOVERY」は何を意味する？</div>
+    <button class="quiz-opt" data-val="A">A) 新しい障害が発生した</button>
+    <button class="quiz-opt" data-val="B">B) 障害から復旧した</button>
+    <button class="quiz-opt" data-val="C">C) 監視が一時停止中</button>
+    <button class="quiz-opt" data-val="D">D) メンテナンス中</button>
+    <div class="quiz-fb" data-ok="正解！RECOVERYは障害状態から正常に戻ったことを示します。" data-ng="不正解。RECOVERYは障害から復旧したことを意味します。PROBLEMが障害発生です。"></div>
+  </div>
+
+  <div class="quiz" data-correct="C">
+    <div class="quiz-q">Q2. State が「CRITICAL」の場合、緊急度は？</div>
+    <button class="quiz-opt" data-val="A">A) 情報提供レベル</button>
+    <button class="quiz-opt" data-val="B">B) WARNING より低い</button>
+    <button class="quiz-opt" data-val="C">C) 最も緊急度が高い</button>
+    <button class="quiz-opt" data-val="D">D) 監視対象外</button>
+    <div class="quiz-fb" data-ok="正解！CRITICALはNagiosにおいて最も深刻な状態です。" data-ng="不正解。CRITICALはWARNINGより上位の、最も緊急度が高い状態です。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 2: 対応フロー全体像 ======================== -->
+<div class="slide" data-slide="2">
+  <h2>02 / 対応フロー全体像</h2>
+  <p>アラートを受けてから完了するまでの基本フローです。</p>
+  <div class="flow">
+    <div class="flow-step"><span class="step-num">①</span>アラート受信</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="step-num">②</span>内容確認</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color:var(--yellow)"><span class="step-num">③</span>サービス影響確認</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="step-num">④</span>SSH接続</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="step-num">⑤</span>エビデンス取得</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="step-num">⑥</span>原因特定</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="step-num">⑦</span>対応実施</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="step-num">⑧</span>復旧確認</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="step-num">⑨</span>報告</div>
+  </div>
+
+  <h3>ステップ詳細</h3>
+  <ol>
+    <li><strong>アラート受信</strong> — メール/チャットで通知を受ける</li>
+    <li><strong>内容確認</strong> — ホスト名・サービス名・状態・Outputを読む</li>
+    <li><strong>サービス影響確認</strong> — ブラウザやcurlでサイト・APIの表示を確認し、ユーザー影響の有無を把握する</li>
+    <li><strong>SSH接続</strong> — 対象ホストにSSHでログイン</li>
+    <li><strong>エビデンス取得</strong> — w, ps, netstat, top, vmstat 等でシステム状態を記録</li>
+    <li><strong>原因特定</strong> — 取得したエビデンスから原因を推定</li>
+    <li><strong>対応実施</strong> — プロセス停止・サービス再起動・ディスク整理等</li>
+    <li><strong>復旧確認</strong> — 対応後にエビデンスを再取得し、正常化を確認</li>
+    <li><strong>報告</strong> — 発生時刻・原因・対応内容・現在の状態をまとめて報告</li>
+  </ol>
+  <div class="important">⚠ ③のサービス影響確認はSSHより先に行う。サービスが落ちているかどうかで対応の緊急度・優先度が大きく変わる。影響ありなら即エスカレーションの判断も必要。</div>
+
+  <div class="fill" data-answers='["サービス影響確認","サービス影響","サービス確認","影響確認"]'>
+    <span class="fill-label">SSHの前に行うべき③のステップ名: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！対応の前にまずエビデンスを取得します。" data-ng="不正解。④は「エビデンス取得」です。対応前にシステム状態を記録することが重要です。"></div>
+  </div>
+
+  <div class="fill" data-answers='["報告"]'>
+    <span class="fill-label">最後（⑨）のステップ: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！最後に関係者への報告を行います。" data-ng="不正解。⑨は「報告」です。対応結果を関係者に共有します。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 3: SSH接続 ======================== -->
+<div class="slide" data-slide="3">
+  <h2>03 / SSH接続</h2>
+  <p>監視対象のサーバーに接続するには SSH（Secure Shell）を使います。</p>
+
+  <h3>基本構文</h3>
+  <pre>ssh <span class="hl">ユーザー名</span>@<span class="hl-cyan">ホスト名またはIPアドレス</span></pre>
+
+  <h3>例</h3>
+  <pre><span class="hl-green">$</span> ssh ops@192.168.1.10
+ops@192.168.1.10's password: ********
+<span class="hl-green">ops@web-01:~$</span> _</pre>
+
+  <h3>ポート指定</h3>
+  <p>SSH のデフォルトポートは <code>22</code> ですが、変更されている場合は <code>-p</code> オプションで指定します。</p>
+  <pre><span class="hl-green">$</span> ssh -p 2222 ops@192.168.1.10</pre>
+
+  <h3>切断</h3>
+  <p>作業が完了したら <code>exit</code> で切断します。接続したままにしないこと。</p>
+  <pre><span class="hl-green">ops@web-01:~$</span> exit
+logout
+Connection to 192.168.1.10 closed.</pre>
+
+  <div class="fill" data-answers='["ssh","SSH"]'>
+    <span class="fill-label">リモートサーバーに接続するコマンド: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！ssh コマンドでリモートサーバーに安全に接続できます。" data-ng="不正解。リモート接続には ssh コマンドを使います。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 4: エビデンス(1) w / uptime ======================== -->
+<div class="slide" data-slide="4">
+  <h2>04 / エビデンス取得 (1) — w / uptime</h2>
+  <p>サーバーに接続したら、まず <code>w</code> コマンドで全体の負荷を確認します。</p>
+
+  <h3>w コマンドの出力例</h3>
+  <pre> 14:23:01 up 3 days, 7:42,  1 user,  load average: <span class="hl-red">8.52</span>, <span class="hl">6.31</span>, <span class="hl-cyan">3.14</span>
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+ops      pts/0    192.168.1.1      14:20    0.00s  0.01s  0.00s w</pre>
+
+  <h3>load average の読み方</h3>
+  <ul>
+    <li><strong style="color:var(--red)">8.52</strong> — 直近 1分間の平均</li>
+    <li><strong style="color:var(--yellow)">6.31</strong> — 直近 5分間の平均</li>
+    <li><strong style="color:var(--cyan)">3.14</strong> — 直近 15分間の平均</li>
+  </ul>
+  <p>load average はCPUの待ち行列の長さです。<strong>CPUコア数</strong>と比較して判断します。</p>
+  <div class="note">例: 2コアCPUでload 8.52 → 各コアに約4.26の負荷。通常の4倍以上で明らかに過負荷。</div>
+
+  <div class="quiz" data-correct="A">
+    <div class="quiz-q">Q. 4コアCPUのサーバーで load average 3.80 の場合、状態は？</div>
+    <button class="quiz-opt" data-val="A">A) 正常範囲内（コア数以下）</button>
+    <button class="quiz-opt" data-val="B">B) 過負荷（コア数を超えている）</button>
+    <button class="quiz-opt" data-val="C">C) load average とコア数は無関係</button>
+    <div class="quiz-fb" data-ok="正解！4コアでload 3.80は1コアあたり0.95なので正常範囲内です。" data-ng="不正解。4コアCPUなら load 4.0 までが目安。3.80はコア数以下なので正常範囲です。"></div>
+  </div>
+
+  <div class="fill" data-answers='["w","uptime"]'>
+    <span class="fill-label">load average を確認する最短コマンド: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！w（または uptime）で load average を素早く確認できます。" data-ng="不正解。w コマンドが最も手軽です（uptime でも可）。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 5: エビデンス(2) ps auxfww ======================== -->
+<div class="slide" data-slide="5">
+  <h2>05 / エビデンス取得 (2) — ps auxfww</h2>
+  <p>全プロセスの一覧を確認するコマンドです。CPU・メモリの消費量で原因プロセスを特定します。</p>
+
+  <h3>コマンド</h3>
+  <pre><span class="hl-green">$</span> ps auxfww</pre>
+  <ul>
+    <li><code>a</code> — 全ユーザーのプロセスを表示</li>
+    <li><code>u</code> — ユーザー情報付きで表示</li>
+    <li><code>x</code> — 端末に紐づかないプロセスも表示</li>
+    <li><code>f</code> — ツリー表示（親子関係がわかる）</li>
+    <li><code>ww</code> — コマンドラインを省略しない</li>
+  </ul>
+
+  <h3>出力例</h3>
+  <pre>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.1   1840  1200 ?        Ss   Feb27   0:03 /sbin/init
+root       892 <span class="hl-red">98.2</span>  0.1   7400  1100 ?        R    14:20   2:45 stress-ng --cpu 2
+root       893 <span class="hl-red">97.8</span>  0.1   7400  1080 ?        R    14:20   2:44  \_ [stress-ng-cpu]</pre>
+  <p>上の例では PID 892 が <strong>CPU 98.2%</strong> を消費しています。<code>stress-ng</code> が原因プロセスとわかります。</p>
+
+  <h3>重要な列</h3>
+  <ul>
+    <li><strong>%CPU</strong> — CPU使用率（高いものが原因候補）</li>
+    <li><strong>%MEM</strong> — メモリ使用率</li>
+    <li><strong>STAT</strong> — R=実行中, S=スリープ, Z=ゾンビ, D=IO待ち</li>
+    <li><strong>COMMAND</strong> — 実行コマンド（何が動いているかの判断材料）</li>
+  </ul>
+
+  <div class="quiz" data-correct="B">
+    <div class="quiz-q">Q. ps auxfww の出力で %CPU が 98.2 のプロセスがあった場合、まず何を確認する？</div>
+    <button class="quiz-opt" data-val="A">A) すぐに kill する</button>
+    <button class="quiz-opt" data-val="B">B) COMMAND 列でプロセスの正体を確認する</button>
+    <button class="quiz-opt" data-val="C">C) サーバーを再起動する</button>
+    <div class="quiz-fb" data-ok="正解！まずCOMMAND列でプロセスが正規のものか不正なものかを確認します。いきなり停止するのは危険です。" data-ng="不正解。まずCOMMAND列でプロセスの正体を確認します。正規のプロセスを誤って停止すると障害が悪化します。"></div>
+  </div>
+
+  <div class="fill" data-answers='["ps auxfww","ps aux","ps auxfww","ps auxf"]'>
+    <span class="fill-label">全プロセスの一覧を表示するコマンド: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！ps auxfww でツリー表示付きの全プロセス一覧が見られます。" data-ng="不正解。ps auxfww（または ps aux）で全プロセスの一覧を表示します。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 6: エビデンス(3) sudo netstat -antp ======================== -->
+<div class="slide" data-slide="6">
+  <h2>06 / エビデンス取得 (3) — sudo netstat -antp</h2>
+  <p>ネットワークの接続状態とLISTENポートを確認するコマンドです。</p>
+
+  <h3>コマンド</h3>
+  <pre><span class="hl-green">$</span> sudo netstat -antp</pre>
+  <ul>
+    <li><code>-a</code> — 全ての接続を表示</li>
+    <li><code>-n</code> — アドレスをIPで表示（名前解決しない）</li>
+    <li><code>-t</code> — TCP接続のみ</li>
+    <li><code>-p</code> — プロセス名/PIDを表示</li>
+  </ul>
+  <div class="important">⚠ <code>-p</code> オプションには <strong>sudo</strong> が必要です。sudo なしだと他ユーザーのプロセス名が表示されません。</div>
+
+  <h3>出力例</h3>
+  <pre>Proto Recv-Q Send-Q Local Address      Foreign Address    State       PID/Program
+tcp        0      0 0.0.0.0:<span class="hl-cyan">22</span>         0.0.0.0:*          <span class="hl-green">LISTEN</span>      142/sshd
+tcp        0      0 0.0.0.0:<span class="hl-cyan">8081</span>       0.0.0.0:*          <span class="hl-green">LISTEN</span>      168/nginx
+tcp        0      0 0.0.0.0:<span class="hl-cyan">5666</span>       0.0.0.0:*          <span class="hl-green">LISTEN</span>      200/nrpe</pre>
+  <p><code>LISTEN</code> 状態のポートがサービスが待ち受けているポートです。期待するサービスがLISTENしていなければ障害の手がかりになります。</p>
+
+  <div class="quiz" data-correct="C">
+    <div class="quiz-q">Q. netstat -antp に sudo を付ける理由は？</div>
+    <button class="quiz-opt" data-val="A">A) root でないとネットワーク情報が見えない</button>
+    <button class="quiz-opt" data-val="B">B) -a オプションに特権が必要</button>
+    <button class="quiz-opt" data-val="C">C) -p で他ユーザーのプロセス名を表示するため</button>
+    <div class="quiz-fb" data-ok="正解！-p オプションで全プロセスのPID/名前を表示するにはroot権限が必要です。" data-ng="不正解。-p オプションで他ユーザーのプロセス情報を表示するには sudo が必要です。"></div>
+  </div>
+
+  <div class="fill" data-answers='["LISTEN"]'>
+    <span class="fill-label">サービスが接続を待ち受けている状態: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！LISTEN 状態はサービスが接続を受け付ける準備ができていることを示します。" data-ng="不正解。接続待ち受け状態は「LISTEN」です。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 7: エビデンス(4) top / vmstat ======================== -->
+<div class="slide" data-slide="7">
+  <h2>07 / エビデンス取得 (4) — top / vmstat</h2>
+  <p>リアルタイムでシステム状態を監視するコマンドです。</p>
+
+  <h3>top コマンド</h3>
+  <pre><span class="hl-green">$</span> top -c -d 1</pre>
+  <ul>
+    <li><code>-c</code> — コマンドラインをフル表示</li>
+    <li><code>-d 1</code> — 1秒間隔で更新</li>
+    <li>終了は <code>q</code> キー</li>
+  </ul>
+  <p>CPU使用率順にプロセスがリアルタイムで並ぶため、高負荷の原因を素早く特定できます。</p>
+
+  <h3>vmstat コマンド</h3>
+  <pre><span class="hl-green">$</span> vmstat 1
+procs ---memory--- ---swap-- -----io---- -system-- ------cpu-----
+ r  b  swpd   free   si   so    bi    bo   in   cs <span class="hl">us</span> <span class="hl-cyan">sy</span> <span class="hl-green">id</span> <span class="hl-red">wa</span> st
+ 2  0     0 112000    0    0   120    80  250  480 <span class="hl">95</span>  <span class="hl-cyan">3</span>  <span class="hl-green">0</span>  <span class="hl-red">2</span>  0</pre>
+  <h3>vmstat の重要な列</h3>
+  <ul>
+    <li><strong>r</strong> — 実行待ちプロセス数（CPUの待ち行列）</li>
+    <li><strong>swpd</strong> — 使用中のスワップ量（0以外ならメモリ不足の兆候）</li>
+    <li><strong>si / so</strong> — スワップイン/アウト（頻発するとパフォーマンス劣化）</li>
+    <li><strong>us</strong> — ユーザー空間CPU使用率</li>
+    <li><strong>wa</strong> — IO待ちCPU率（高いとディスクがボトルネック）</li>
+    <li><strong>id</strong> — アイドル率（0に近いとCPU飽和）</li>
+  </ul>
+
+  <div class="quiz" data-correct="B">
+    <div class="quiz-q">Q. vmstat で wa（IO wait）が高い場合、ボトルネックは何？</div>
+    <button class="quiz-opt" data-val="A">A) CPU</button>
+    <button class="quiz-opt" data-val="B">B) ディスクI/O</button>
+    <button class="quiz-opt" data-val="C">C) ネットワーク</button>
+    <div class="quiz-fb" data-ok="正解！wa（IO wait）はCPUがディスクI/Oを待っている時間の割合です。" data-ng="不正解。wa はIO wait = ディスクI/Oの待ち時間です。ディスクがボトルネックです。"></div>
+  </div>
+
+  <div class="fill" data-answers='["swpd"]'>
+    <span class="fill-label">vmstat でスワップ使用量を示す列: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！swpd がスワップ使用量（KB）を示します。0以外ならメモリ不足の兆候です。" data-ng="不正解。swpd 列がスワップ使用量です。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 8: リソース確認 df / free / du ======================== -->
+<div class="slide" data-slide="8">
+  <h2>08 / リソース確認 — df / free / du</h2>
+  <p>ディスクとメモリの状態を確認するコマンドです。</p>
+
+  <h3>df -h（ディスク使用量）</h3>
+  <pre><span class="hl-green">$</span> df -h
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1       2.0G  680M  1.2G  <span class="hl">36%</span> /
+tmpfs            64M  4.0K   64M   0% /tmp</pre>
+  <ul>
+    <li><code>-h</code> — 人間が読みやすい単位（MB/GB）で表示</li>
+    <li><strong>Use%</strong> が 90% 以上なら危険。100% になるとサービスが停止する可能性あり</li>
+  </ul>
+
+  <h3>free -h（メモリ使用量）</h3>
+  <pre><span class="hl-green">$</span> free -h
+              total    used    free  shared  buff/cache  available
+Mem:          460M    128M    112M     4M       220M      <span class="hl-cyan">312M</span>
+Swap:           0B      0B      0B</pre>
+  <ul>
+    <li><strong>available</strong>（利用可能メモリ）を見る。free ではなく available が実際に使える量</li>
+    <li>Swap の used が大きい場合はメモリ不足の兆候</li>
+  </ul>
+
+  <h3>du -sh（ディレクトリサイズ）</h3>
+  <pre><span class="hl-green">$</span> du -sh /var/log/*
+120M    /var/log/messages
+45M     /var/log/nginx</pre>
+  <p>ディスク容量不足のとき、どのディレクトリが容量を消費しているか特定できます。</p>
+
+  <div class="quiz" data-correct="C">
+    <div class="quiz-q">Q. free -h の出力で実際に利用可能なメモリを示す列は？</div>
+    <button class="quiz-opt" data-val="A">A) free</button>
+    <button class="quiz-opt" data-val="B">B) used</button>
+    <button class="quiz-opt" data-val="C">C) available</button>
+    <div class="quiz-fb" data-ok="正解！available はバッファ/キャッシュの解放可能分を含む、実際に使えるメモリ量です。" data-ng="不正解。free ではなく available が実際に利用可能なメモリ量です。buff/cache の解放可能分が含まれます。"></div>
+  </div>
+
+  <div class="fill" data-answers='["df -h","df","df -h"]'>
+    <span class="fill-label">ディスク使用量を確認するコマンド: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！df -h でファイルシステムごとの使用量を確認できます。" data-ng="不正解。df（df -h）コマンドでディスク使用量を確認します。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 9: サービス管理 systemctl / journalctl ======================== -->
+<div class="slide" data-slide="9">
+  <h2>09 / サービス管理 — systemctl / journalctl</h2>
+  <p>サービスの状態確認・起動・再起動と、ログの確認方法です。</p>
+
+  <h3>systemctl — サービス管理</h3>
+  <pre><span class="hl-green">$</span> systemctl status nginx       <span class="hl-cyan"># 状態確認</span>
+<span class="hl-green">$</span> sudo systemctl start nginx   <span class="hl-cyan"># 起動</span>
+<span class="hl-green">$</span> sudo systemctl restart nginx <span class="hl-cyan"># 再起動</span>
+<span class="hl-green">$</span> sudo systemctl stop nginx    <span class="hl-cyan"># 停止</span></pre>
+  <div class="note">💡 status は sudo なしで実行可能。start / restart / stop には sudo が必要です。</div>
+
+  <h3>journalctl — ログ確認</h3>
+  <pre><span class="hl-green">$</span> journalctl -u nginx --no-pager -n 50  <span class="hl-cyan"># 直近50行</span>
+<span class="hl-green">$</span> journalctl -u nginx --since "1 hour ago"</pre>
+  <ul>
+    <li><code>-u サービス名</code> — 特定サービスのログのみ</li>
+    <li><code>-n 数字</code> — 直近N行を表示</li>
+    <li><code>--since</code> — 時間指定でフィルタ</li>
+  </ul>
+
+  <div class="quiz" data-correct="A">
+    <div class="quiz-q">Q. サービスの再起動に sudo が必要な理由は？</div>
+    <button class="quiz-opt" data-val="A">A) システムサービスの操作は管理者権限が必要</button>
+    <button class="quiz-opt" data-val="B">B) systemctl コマンド自体が root 専用</button>
+    <button class="quiz-opt" data-val="C">C) ログファイルの読み取りに権限が必要</button>
+    <div class="quiz-fb" data-ok="正解！サービスの起動・停止・再起動はシステムに影響するため管理者権限が必要です。statusの確認は一般ユーザーでも可能です。" data-ng="不正解。systemctl 自体は一般ユーザーでも使えますが、start/stop/restart はシステムに影響するため sudo が必要です。"></div>
+  </div>
+
+  <div class="fill" data-answers='["journalctl","journalctl -u"]'>
+    <span class="fill-label">サービスのログを確認するコマンド: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！journalctl -u サービス名 でサービスのログを確認できます。" data-ng="不正解。journalctl コマンドでサービスのログを確認します。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 10: 対応アクション kill / rm / sudo ======================== -->
+<div class="slide" data-slide="10">
+  <h2>10 / 対応アクション — kill / rm / sudo</h2>
+  <p>原因を特定した後の対応コマンドです。</p>
+
+  <h3>kill — プロセス停止</h3>
+  <pre><span class="hl-green">$</span> sudo kill <span class="hl">PID</span>         <span class="hl-cyan"># 正常終了シグナル (SIGTERM)</span>
+<span class="hl-green">$</span> sudo kill -9 <span class="hl">PID</span>      <span class="hl-cyan"># 強制終了 (SIGKILL)</span></pre>
+  <ul>
+    <li>まず <code>kill PID</code> で正常終了を試みる</li>
+    <li>応答しない場合のみ <code>kill -9</code> で強制終了</li>
+    <li>他ユーザーのプロセスを停止するには <code>sudo</code> が必要</li>
+  </ul>
+  <div class="important">⚠ kill する前に必ず ps で PID と COMMAND を確認すること。誤ったプロセスを停止すると障害が悪化します。</div>
+
+  <h3>rm — ファイル削除（ディスク容量対応時）</h3>
+  <pre><span class="hl-green">$</span> sudo rm /var/log/app/huge.log     <span class="hl-cyan"># ファイル削除</span>
+<span class="hl-green">$</span> sudo truncate -s 0 /var/log/app/huge.log <span class="hl-cyan"># ファイルを空にする（推奨）</span></pre>
+  <p>ログファイルは削除より <code>truncate</code> で空にする方が安全です（ファイルディスクリプタが保持される）。</p>
+
+  <h3>sudo の注意点</h3>
+  <ul>
+    <li>必要なときだけ sudo を使う（最小権限の原則）</li>
+    <li><code>sudo</code> を付けたコマンドは root 権限で実行される</li>
+    <li>root で直接操作するよりも sudo で都度昇格する方が安全</li>
+  </ul>
+
+  <div class="quiz" data-correct="A">
+    <div class="quiz-q">Q. プロセスを停止するとき、最初に試すべきシグナルは？</div>
+    <button class="quiz-opt" data-val="A">A) kill PID（SIGTERM — 正常終了）</button>
+    <button class="quiz-opt" data-val="B">B) kill -9 PID（SIGKILL — 強制終了）</button>
+    <button class="quiz-opt" data-val="C">C) kill -HUP PID（設定再読込）</button>
+    <div class="quiz-fb" data-ok="正解！まずSIGTERM（kill PID）で正常終了を試み、応答しない場合のみ kill -9 を使います。" data-ng="不正解。まずkill PID（SIGTERM）で正常終了を試みます。いきなり kill -9 は最終手段です。"></div>
+  </div>
+
+  <div class="fill" data-answers='["truncate","truncate -s 0"]'>
+    <span class="fill-label">ログファイルを安全に空にするコマンド: </span>
+    <input class="fill-input" placeholder="___">
+    <button class="fill-check">確認</button>
+    <div class="fill-fb" data-ok="正解！truncate -s 0 でファイルディスクリプタを保持したままファイルを空にできます。" data-ng="不正解。truncate -s 0 コマンドでファイルを安全に空にできます。rm より安全です。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 11: エスカレーション判断 ======================== -->
+<div class="slide" data-slide="11">
+  <h2>11 / エスカレーション判断</h2>
+  <p>一次対応者として「自分で対応する」か「上位者に引き継ぐ（エスカレーション）」かの判断基準です。</p>
+
+  <h3>自分で対応できるケース</h3>
+  <ul>
+    <li>原因が明確で、手順書（ランブック）に記載がある</li>
+    <li>不正なプロセスの停止（stress-ng, マイニングプロセス等）</li>
+    <li>ログファイル肥大化によるディスク圧迫 → ログクリーンアップ</li>
+    <li>サービスの単純な再起動で復旧する問題</li>
+  </ul>
+
+  <h3>エスカレーションすべきケース</h3>
+  <ul>
+    <li>原因が特定できない / 複数の要因が絡んでいる</li>
+    <li>対応に影響範囲の判断が必要（DB操作、設定変更等）</li>
+    <li>ハードウェア障害の疑い（ディスクエラー、メモリエラー）</li>
+    <li>セキュリティインシデントの疑い（不審なプロセス、不正アクセス）</li>
+    <li>サービス再起動で復旧しない</li>
+    <li>自分の権限では対応できない操作が必要</li>
+  </ul>
+  <div class="note">💡 迷ったらエスカレーション。「報告が遅れた」方が「誤った対応をした」より遥かに深刻です。</div>
+
+  <div class="quiz" data-correct="B">
+    <div class="quiz-q">Q1. サーバーに見覚えのないプロセスが大量のCPUを消費している。対応は？</div>
+    <button class="quiz-opt" data-val="A">A) すぐに kill -9 で停止する</button>
+    <button class="quiz-opt" data-val="B">B) エビデンスを取得してエスカレーションする</button>
+    <button class="quiz-opt" data-val="C">C) しばらく様子を見る</button>
+    <div class="quiz-fb" data-ok="正解！不審なプロセスはセキュリティインシデントの可能性があります。エビデンスを保全してエスカレーションします。" data-ng="不正解。見覚えのないプロセスはセキュリティインシデントの可能性があるため、エビデンスを取得してエスカレーションします。"></div>
+  </div>
+
+  <div class="quiz" data-correct="A">
+    <div class="quiz-q">Q2. nginx を restart しても起動しない。次の行動は？</div>
+    <button class="quiz-opt" data-val="A">A) journalctl でログを確認し、解決できなければエスカレーション</button>
+    <button class="quiz-opt" data-val="B">B) 何度も restart を繰り返す</button>
+    <button class="quiz-opt" data-val="C">C) サーバーを再起動する</button>
+    <div class="quiz-fb" data-ok="正解！まずログで原因を確認し、設定エラー等なら修正を試みます。解決できなければエスカレーションします。" data-ng="不正解。まず journalctl でログを確認します。同じ操作を繰り返しても結果は変わりません。"></div>
+  </div>
+</div>
+
+<!-- ======================== SLIDE 12: 総合テスト ======================== -->
+<div class="slide" data-slide="12">
+  <h2>12 / 総合テスト</h2>
+  <p>ここまでの内容を5問のテストで確認します。</p>
+
+  <div class="quiz" data-correct="C" data-final="1">
+    <div class="quiz-q">Q1. Nagiosアラートで「State: WARNING」の場合、CRITICALと比べて？</div>
+    <button class="quiz-opt" data-val="A">A) WARNINGの方が緊急度が高い</button>
+    <button class="quiz-opt" data-val="B">B) 両者は同じ緊急度</button>
+    <button class="quiz-opt" data-val="C">C) CRITICALの方が緊急度が高い</button>
+    <div class="quiz-fb" data-ok="正解！WARNING &lt; CRITICAL の順で緊急度が上がります。" data-ng="不正解。緊急度は WARNING &lt; CRITICAL です。CRITICALが最も緊急です。"></div>
+  </div>
+
+  <div class="quiz" data-correct="B" data-final="1">
+    <div class="quiz-q">Q2. 2コアCPUのサーバーで load average が 6.00 の場合、1コアあたりの負荷は？</div>
+    <button class="quiz-opt" data-val="A">A) 2.00</button>
+    <button class="quiz-opt" data-val="B">B) 3.00</button>
+    <button class="quiz-opt" data-val="C">C) 6.00</button>
+    <div class="quiz-fb" data-ok="正解！6.00 ÷ 2コア = 1コアあたり3.00 の負荷。コア数を大幅に超えており過負荷です。" data-ng="不正解。load average ÷ コア数 = 1コアあたりの負荷。6.00 ÷ 2 = 3.00 です。"></div>
+  </div>
+
+  <div class="quiz" data-correct="A" data-final="1">
+    <div class="quiz-q">Q3. ディスク使用量 100% のとき、まず実行すべきコマンドは？</div>
+    <button class="quiz-opt" data-val="A">A) du -sh /* で容量を消費しているディレクトリを特定</button>
+    <button class="quiz-opt" data-val="B">B) rm -rf /tmp/* ですぐに削除</button>
+    <button class="quiz-opt" data-val="C">C) サーバーを再起動する</button>
+    <div class="quiz-fb" data-ok="正解！まず du で原因を特定してから、安全に削除・truncateします。" data-ng="不正解。まず du -sh /* でどのディレクトリが容量を消費しているか特定します。闇雲に削除するのは危険です。"></div>
+  </div>
+
+  <div class="quiz" data-correct="C" data-final="1">
+    <div class="quiz-q">Q4. 一次対応の最後に行うべきことは？</div>
+    <button class="quiz-opt" data-val="A">A) サーバーからログアウトする</button>
+    <button class="quiz-opt" data-val="B">B) Nagiosのアラートを手動でクリアする</button>
+    <button class="quiz-opt" data-val="C">C) 発生時刻・原因・対応内容・現状を報告する</button>
+    <div class="quiz-fb" data-ok="正解！対応フローの最後は報告です。発生時刻・原因・対応内容・現在の状態をまとめて報告します。" data-ng="不正解。最後は報告です。発生時刻・原因・対応内容・現在の状態を関係者に共有します。"></div>
+  </div>
+
+  <div class="quiz" data-correct="B" data-final="1">
+    <div class="quiz-q">Q5. vmstat で si/so が高い値を示している場合、何が起きている？</div>
+    <button class="quiz-opt" data-val="A">A) ディスクが壊れている</button>
+    <button class="quiz-opt" data-val="B">B) メモリ不足でスワップが頻発している</button>
+    <button class="quiz-opt" data-val="C">C) ネットワークが混雑している</button>
+    <div class="quiz-fb" data-ok="正解！si（swap in）/ so（swap out）が高い = メモリ不足でディスクとの間でスワップが頻発しています。" data-ng="不正解。si/so はスワップイン/アウトです。メモリ不足のため、ディスクとの間でデータの入れ替えが起きています。"></div>
+  </div>
+
+  <div id="final-score" style="display:none;margin-top:24px">
+    <div class="score-display">
+      <div class="score-num" id="score-num"></div>
+      <div class="score-detail" id="score-detail"></div>
+    </div>
+    <div class="score-msg" id="score-msg"></div>
+    <a href="index.html" class="rp-link">ロールプレイに挑戦する →</a>
+    <div class="reset-link" onclick="resetProgress()">進捗をリセットする</div>
+  </div>
+</div>
+
+</div><!-- /slide-container -->
+
+<!-- Nav bar -->
+<div class="nav-bar">
+  <button class="nav-btn" id="nav-prev" onclick="prevSlide()">← 前へ</button>
+  <span class="nav-pos" id="nav-pos">0 / 12</span>
+  <button class="nav-btn primary" id="nav-next" onclick="nextSlide()">次へ →</button>
+</div>
+
+<script>
+'use strict';
+
+const TOTAL_SLIDES = 13; // 0..12
+const STORAGE_KEY = 'guide_progress';
+
+let currentSlide = 0;
+let answers = {}; // { 'quiz-1-0': 'B', 'fill-2-0': true, ... }
+
+// ─── Init ───
+function init() {
+  loadProgress();
+  setupQuizzes();
+  setupFills();
+  showSlide(currentSlide);
+}
+
+// ─── Slide Navigation ───
+function showSlide(n) {
+  currentSlide = Math.max(0, Math.min(n, TOTAL_SLIDES - 1));
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const target = document.querySelector(`.slide[data-slide="${currentSlide}"]`);
+  if (target) target.classList.add('active');
+  updateNav();
+  updateProgress();
+  saveProgress();
+  window.scrollTo(0, 0);
+  document.querySelector('.slide-container').scrollTop = 0;
+}
+
+function nextSlide() {
+  if (currentSlide < TOTAL_SLIDES - 1) showSlide(currentSlide + 1);
+}
+function prevSlide() {
+  if (currentSlide > 0) showSlide(currentSlide - 1);
+}
+function goSlide(n) { showSlide(n); }
+
+function updateNav() {
+  const prev = document.getElementById('nav-prev');
+  const next = document.getElementById('nav-next');
+  const pos = document.getElementById('nav-pos');
+  prev.disabled = currentSlide === 0;
+  pos.textContent = `${currentSlide} / ${TOTAL_SLIDES - 1}`;
+
+  if (currentSlide === TOTAL_SLIDES - 1) {
+    next.textContent = 'ロールプレイへ →';
+    next.onclick = () => { window.location.href = 'index.html'; };
+  } else {
+    next.textContent = '次へ →';
+    next.onclick = nextSlide;
+  }
+}
+
+function updateProgress() {
+  const pct = (currentSlide / (TOTAL_SLIDES - 1)) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+// ─── Quiz (MC) ───
+function setupQuizzes() {
+  document.querySelectorAll('.slide').forEach(slide => {
+    slide.querySelectorAll('.quiz').forEach((quiz, idxInSlide) => {
+    const slideNum = slide.dataset.slide;
+    const key = `quiz-${slideNum}-${idxInSlide}`;
+    const correct = quiz.dataset.correct;
+    const opts = quiz.querySelectorAll('.quiz-opt');
+    const fb = quiz.querySelector('.quiz-fb');
+
+    // Restore state
+    if (answers[key]) {
+      lockQuiz(quiz, correct, answers[key]);
+    }
+
+    opts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (opt.classList.contains('locked')) return;
+        const val = opt.dataset.val;
+        answers[key] = val;
+        lockQuiz(quiz, correct, val);
+        saveProgress();
+        checkFinalScore();
+      });
+    });
+  });
+  });
+}
+
+function lockQuiz(quiz, correct, chosen) {
+  const opts = quiz.querySelectorAll('.quiz-opt');
+  const fb = quiz.querySelector('.quiz-fb');
+  opts.forEach(o => {
+    o.classList.add('locked');
+    if (o.dataset.val === correct) o.classList.add('correct');
+    if (o.dataset.val === chosen && chosen !== correct) o.classList.add('wrong');
+  });
+  fb.classList.add('show');
+  if (chosen === correct) {
+    fb.classList.add('ok');
+    fb.textContent = '✓ ' + fb.dataset.ok;
+  } else {
+    fb.classList.add('ng');
+    fb.textContent = '✗ ' + fb.dataset.ng;
+  }
+}
+
+// ─── Fill-in ───
+function setupFills() {
+  document.querySelectorAll('.slide').forEach(slide => {
+    slide.querySelectorAll('.fill').forEach((fill, idxInSlide) => {
+    const slideNum = slide.dataset.slide;
+    const key = `fill-${slideNum}-${idxInSlide}`;
+    const acceptedRaw = fill.dataset.answers;
+    const accepted = JSON.parse(acceptedRaw).map(a => a.toLowerCase().trim());
+    const input = fill.querySelector('.fill-input');
+    const btn = fill.querySelector('.fill-check');
+    const fb = fill.querySelector('.fill-fb');
+
+    // Restore state
+    if (answers[key] !== undefined) {
+      input.value = answers[key].value || '';
+      lockFill(fill, answers[key].correct);
+    }
+
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      const val = input.value.trim();
+      if (!val) return;
+      const isCorrect = accepted.includes(val.toLowerCase());
+      answers[key] = { value: val, correct: isCorrect };
+      lockFill(fill, isCorrect);
+      saveProgress();
+      checkFinalScore();
+    });
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') btn.click();
+    });
+  });
+  });
+}
+
+function lockFill(fill, isCorrect) {
+  const input = fill.querySelector('.fill-input');
+  const btn = fill.querySelector('.fill-check');
+  const fb = fill.querySelector('.fill-fb');
+  input.disabled = true;
+  btn.disabled = true;
+  fb.classList.add('show');
+  if (isCorrect) {
+    input.classList.add('correct');
+    fb.classList.add('ok');
+    fb.textContent = '✓ ' + fb.dataset.ok;
+  } else {
+    input.classList.add('wrong');
+    fb.classList.add('ng');
+    fb.textContent = '✗ ' + fb.dataset.ng;
+  }
+}
+
+// ─── Final Score (Slide 12) ───
+function checkFinalScore() {
+  const finalQuizzes = document.querySelectorAll('.quiz[data-final]');
+  let allAnswered = true;
+  let correctCount = 0;
+  let totalFinal = finalQuizzes.length;
+
+  finalQuizzes.forEach((quiz, i) => {
+    const slideNum = quiz.closest('.slide').dataset.slide;
+    // Find the quiz index within this slide
+    const allQuizzesInSlide = quiz.closest('.slide').querySelectorAll('.quiz');
+    let idx = 0;
+    allQuizzesInSlide.forEach((q, j) => { if (q === quiz) idx = j; });
+    const key = `quiz-${slideNum}-${idx}`;
+    if (!answers[key]) {
+      allAnswered = false;
+    } else if (answers[key] === quiz.dataset.correct) {
+      correctCount++;
+    }
+  });
+
+  if (!allAnswered) return;
+
+  // Also count all quiz+fill across all slides
+  let totalAll = 0, correctAll = 0;
+  Object.keys(answers).forEach(key => {
+    totalAll++;
+    if (key.startsWith('quiz-')) {
+      // Find the correct answer for this quiz
+      const parts = key.split('-'); // quiz-slideNum-idx
+      const slideNum = parts[1];
+      const idx = parseInt(parts[2]);
+      const slide = document.querySelector(`.slide[data-slide="${slideNum}"]`);
+      if (slide) {
+        const quizzes = slide.querySelectorAll('.quiz');
+        if (quizzes[idx] && answers[key] === quizzes[idx].dataset.correct) {
+          correctAll++;
+        }
+      }
+    } else if (key.startsWith('fill-')) {
+      if (answers[key] && answers[key].correct) correctAll++;
+    }
+  });
+
+  const pct = Math.round((correctAll / totalAll) * 100);
+  const grade = pct >= 85 ? 'S' : pct >= 70 ? 'A' : pct >= 55 ? 'B' : pct >= 40 ? 'C' : 'D';
+  const msgs = {
+    S: '素晴らしい！一次対応の基本を完璧に理解しています。ロールプレイで実践してみましょう！',
+    A: 'よくできました！基本はしっかり押さえています。ロールプレイで腕試ししましょう。',
+    B: '合格ラインです。間違えた箇所を復習してからロールプレイに挑戦するとよいでしょう。',
+    C: 'もう少し復習が必要です。各スライドを読み直してから再挑戦してみてください。',
+    D: '基礎から復習しましょう。ガイドをもう一度最初から読み直すことをおすすめします。'
+  };
+
+  const scoreEl = document.getElementById('final-score');
+  scoreEl.style.display = 'block';
+  document.getElementById('score-num').textContent = grade;
+  document.getElementById('score-num').className = `score-num grade-${grade}`;
+  document.getElementById('score-detail').textContent = `${correctAll} / ${totalAll} 正解 (${pct}%)`;
+  document.getElementById('score-msg').textContent = msgs[grade];
+}
+
+// ─── Persistence ───
+function saveProgress() {
+  const data = { currentSlide, answers };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      currentSlide = data.currentSlide || 0;
+      answers = data.answers || {};
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function resetProgress() {
+  localStorage.removeItem(STORAGE_KEY);
+  currentSlide = 0;
+  answers = {};
+  // Reset all quiz/fill UI
+  document.querySelectorAll('.quiz-opt').forEach(o => {
+    o.classList.remove('locked', 'correct', 'wrong');
+  });
+  document.querySelectorAll('.quiz-fb').forEach(f => {
+    f.classList.remove('show', 'ok', 'ng');
+    f.textContent = '';
+  });
+  document.querySelectorAll('.fill-input').forEach(i => {
+    i.disabled = false;
+    i.value = '';
+    i.classList.remove('correct', 'wrong');
+  });
+  document.querySelectorAll('.fill-check').forEach(b => { b.disabled = false; });
+  document.querySelectorAll('.fill-fb').forEach(f => {
+    f.classList.remove('show', 'ok', 'ng');
+    f.textContent = '';
+  });
+  document.getElementById('final-score').style.display = 'none';
+  showSlide(0);
+}
+
+// ─── Keyboard Navigation ───
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight') nextSlide();
+  if (e.key === 'ArrowLeft') prevSlide();
+});
+
+// ─── Start ───
+init();
+</script>
+</body>
+</html>

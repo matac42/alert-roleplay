@@ -120,7 +120,8 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 <!-- SCREEN: Scenario Select -->
 <div id="select-screen" class="screen active">
   <h1>ALERT RESPONSE ROLEPLAY</h1>
-  <div class="subtitle">Nagios監視アラート対応トレーニング — ターミナルでコマンドを打って障害を復旧せよ</div>
+  <div class="subtitle">Nagios監視アラート対応トレーニング — ターミナルでコマンドを打って正しく一次対応を行え</div>
+  <div class="guide-link" style="text-align:center;margin-bottom:20px"><a href="guide.html" style="color:var(--cyan);font-size:14px;text-decoration:none;border-bottom:1px solid var(--dim);padding-bottom:2px;transition:color .2s,border-color .2s">初めての方はこちら → 学習ガイド</a></div>
   <div class="scenario-list" id="scenario-list"></div>
 </div>
 
@@ -176,7 +177,7 @@ html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Courier 
 const REQUIRED_EVIDENCE = [
   { cmd: 'w', label: 'w', match: input => /^w$/.test(input.trim()) },
   { cmd: 'ps auxfww', label: 'ps auxfww', match: input => /^ps\s+aux/.test(input.trim()) },
-  { cmd: 'netstat -antp', label: 'netstat -antp', match: input => /^netstat\s/.test(input.trim()) },
+  { cmd: 'sudo netstat -antp', label: 'sudo netstat -antp', match: input => /^(sudo\s+)?netstat\s/.test(input.trim()) },
   { cmd: 'top -c -d 1', label: 'top -c -d 1', match: input => /^top/.test(input.trim()) },
   { cmd: 'vmstat 1', label: 'vmstat 1', match: input => /^vmstat/.test(input.trim()) },
 ];
@@ -188,27 +189,27 @@ const SCENARIOS = [
 {
   id: 1,
   title: 'CPU高騰 — stress-ng暴走',
-  host: 'alpine-vm',
+  host: 'web-01',
   difficulty: 'Easy',
-  desc: 'alpine-vm の CPU Load が CRITICAL。原因を特定して復旧せよ。',
+  desc: 'web-01 の CPU Load が CRITICAL。原因を特定し、一次対応を行え。',
   nagios: {
     label: '***** Nagios Alert *****',
     type: 'PROBLEM',
-    host: 'alpine-vm',
+    host: 'web-01',
     service: 'CPU Load',
     state: 'CRITICAL',
     output: 'CRITICAL - load average: 8.52, 6.31, 3.14 | load1=8.520;2.000;4.000;0; load5=6.310;2.000;4.000;0; load15=3.140;2.000;4.000;0;',
     time: '2026-03-02 14:23:01 JST'
   },
-  sshUser: 'root',
-  sshPort: '2222',
-  sshAddr: '127.0.0.1',
+  sshUser: 'ops',
+  sshPort: '22',
+  sshAddr: '192.168.1.10',
   initState() {
     return {
-      hostname: 'alpine-vm',
-      user: 'root',
-      home: '/root',
-      cwd: '/root',
+      hostname: 'web-01',
+      user: 'ops',
+      home: '/home/ops',
+      cwd: '/home/ops',
       uptime: ' 14:23:01 up 3 days, 7:42,  1 user,  load average: 8.52, 6.31, 3.14',
       procs: [
         { user:'root', pid:1, cpu:0.0, mem:0.1, vsz:1840, rss:1200, tty:'?', stat:'Ss', start:'Feb27', time:'0:03', cmd:'/sbin/init' },
@@ -223,24 +224,25 @@ const SCENARIOS = [
       fs: { '/': { size:'2.0G', used:'680M', avail:'1.2G', pct:'36%', mount:'/' },
             '/tmp': { size:'64M', used:'4K', avail:'64M', pct:'0%', mount:'/tmp' } },
       mem: { total:460, used:128, free:112, shared:4, buff:220, avail:312, swapTotal:0, swapUsed:0, swapFree:0 },
-      services: { nginx:'started', sshd:'started', nrpe:'started' },
+      services: { nginx:'active', sshd:'active', nrpe:'active' },
       files: {
-        '/var/log/messages': 'Feb 27 07:42:01 alpine-vm syslog: syslogd started\nMar  2 14:20:05 alpine-vm root: stress-ng started via cron job\nMar  2 14:20:06 alpine-vm kernel: CPU: high utilization detected',
+        '/var/log/messages': 'Feb 27 07:42:01 web-01 syslog: syslogd started\nMar  2 14:20:05 web-01 root: stress-ng started via cron job\nMar  2 14:20:06 web-01 kernel: CPU: high utilization detected',
         '/var/log/nginx/error.log': '2026/03/01 12:00:01 [notice] 168#168: signal process started',
         '/var/log/nginx/access.log': '127.0.0.1 - - [02/Mar/2026:14:15:01 +0900] "GET /health HTTP/1.1" 200 2',
-        '/root': ['sim/', '.ash_history'],
-        '/root/sim': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
-        '/root/sim/stress-test.sh': '#!/bin/sh\nstress-ng --cpu 2 --timeout 0 &',
+        '/home/ops': ['scripts/', '.bash_history'],
+        '/home/ops/scripts': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
+        '/home/ops/scripts/stress-test.sh': '#!/bin/sh\nstress-ng --cpu 2 --timeout 0 &',
         '/tmp': []
       },
-      wOutput: ' 14:23:01 up 3 days, 7:42,  1 user,  load average: 8.52, 6.31, 3.14\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nroot     pts/0    10.0.2.2         14:20    0.00s  0.01s  0.00s w',
+      wOutput: ' 14:23:01 up 3 days, 7:42,  1 user,  load average: 8.52, 6.31, 3.14\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nops      pts/0    192.168.1.1      14:20    0.00s  0.01s  0.00s w',
       netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      142/sshd\ntcp        0      0 0.0.0.0:8081            0.0.0.0:*               LISTEN      168/nginx\ntcp        0      0 0.0.0.0:5666            0.0.0.0:*               LISTEN      200/nrpe',
       vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 2  0      0 112000  20000 200000    0    0   120    80  250  480 95  3  0  2  0\n 2  0      0 111800  20000 200000    0    0    10     5  240  470 96  2  0  2  0',
       monitorSpec: {
-        host: { name:'alpine-vm', os:'Alpine Linux 3.19', ip:'10.0.2.15 (NAT: 127.0.0.1:2222)', ssh:'ssh -p 2222 root@127.0.0.1' },
-        service: { name:'CPU Load', plugin:'check_nrpe -H alpine-vm -c check_load', warning:'2.0,2.0,2.0', critical:'4.0,4.0,4.0', interval:'5min' },
+        host: { name:'web-01', os:'Ubuntu 22.04', ip:'192.168.1.10', ssh:'ssh ops@192.168.1.10' },
+        service: { name:'CPU Load', plugin:'check_nrpe -H web-01 -c check_load', warning:'2.0,2.0,2.0', critical:'4.0,4.0,4.0', interval:'5min', url:'http://localhost:8081/health' },
         runbook: {
           checks: [
+            'browse http://localhost:8081/health でサイトの応答を確認',
             'w で load average を確認（1/5/15分平均）',
             'ps auxfww または top -c でCPU消費の大きいプロセスを特定',
             'プロセスが正規のもの（cron, app等）か不正なもの（マイニング, stress等）か確認',
@@ -258,22 +260,24 @@ const SCENARIOS = [
         return !stressAlive;
       },
       idealTime: 90,
-      idealCmds: 10,
+      idealCmds: 11,
       idealSteps: [
-        'ssh -p 2222 root@127.0.0.1 でalpine-vmに接続',
+        'ssh ops@192.168.1.10 でweb-01に接続',
+        'browse http://localhost:8081/health でサービス影響を確認',
         'w で負荷状況とログインユーザーを確認',
         'ps auxfww でプロセスツリーを確認',
-        'netstat -antp でLISTENポートを確認',
+        'sudo netstat -antp でLISTENポートを確認',
         'top -c -d 1 でリアルタイムCPU状況を確認',
         'vmstat 1 でシステム全体の状態を確認',
-        'killall stress-ng で暴走プロセスを停止',
-        'w で負荷の低下を確認'
+        'sudo killall stress-ng で暴走プロセスを停止',
+        'w で負荷の低下を確認',
+        '対応結果をチームに報告'
       ],
       explanation: 'stress-ngはCPUストレステストツールです。--timeout 0 で無限実行されており、2コアのCPUを100%使い切っていました。killallで全stress-ngプロセスを一括停止するのが最も効率的です。基本コマンド5つでエビデンスを残すことが実務では重要です。',
       hints: [
         'まず ssh でホストに接続し、w でload averageを確認してみましょう',
         'ps auxfww で全プロセスを確認し、CPU使用率が高いプロセスを探しましょう',
-        'stress-ng が原因です。killall stress-ng で停止できます'
+        'stress-ng が原因です。sudo killall stress-ng で停止できます'
       ]
     };
   }
@@ -281,27 +285,27 @@ const SCENARIOS = [
 {
   id: 2,
   title: 'ディスク逼迫 — 巨大ログファイル',
-  host: 'alpine-vm',
+  host: 'web-01',
   difficulty: 'Easy',
-  desc: 'alpine-vm の Disk Usage が CRITICAL。原因を調査して空き容量を回復せよ。',
+  desc: 'web-01 の Disk Usage が CRITICAL。原因を調査して空き容量を回復せよ。',
   nagios: {
     label: '***** Nagios Alert *****',
     type: 'PROBLEM',
-    host: 'alpine-vm',
+    host: 'web-01',
     service: 'Disk Usage',
     state: 'CRITICAL',
     output: 'DISK CRITICAL - /: 94% used (1.88G/2.0G) - free space: 120M',
     time: '2026-03-02 15:10:22 JST'
   },
-  sshUser: 'root',
-  sshPort: '2222',
-  sshAddr: '127.0.0.1',
+  sshUser: 'ops',
+  sshPort: '22',
+  sshAddr: '192.168.1.10',
   initState() {
     return {
-      hostname: 'alpine-vm',
-      user: 'root',
-      home: '/root',
-      cwd: '/root',
+      hostname: 'web-01',
+      user: 'ops',
+      home: '/home/ops',
+      cwd: '/home/ops',
       uptime: ' 15:10:22 up 3 days, 8:29,  1 user,  load average: 0.12, 0.08, 0.05',
       procs: [
         { user:'root', pid:1, cpu:0.0, mem:0.1, vsz:1840, rss:1200, tty:'?', stat:'Ss', start:'Feb27', time:'0:03', cmd:'/sbin/init' },
@@ -312,28 +316,29 @@ const SCENARIOS = [
       ],
       fs: { '/': { size:'2.0G', used:'1.88G', avail:'120M', pct:'94%', mount:'/' } },
       mem: { total:460, used:98, free:142, shared:4, buff:220, avail:342, swapTotal:0, swapUsed:0, swapFree:0 },
-      services: { nginx:'started', sshd:'started', nrpe:'started' },
+      services: { nginx:'active', sshd:'active', nrpe:'active' },
       files: {
-        '/var/log/messages': 'Mar  2 15:08:01 alpine-vm cron: disk usage warning\nMar  2 15:10:01 alpine-vm nagios-nrpe: DISK CRITICAL',
+        '/var/log/messages': 'Mar  2 15:08:01 web-01 cron: disk usage warning\nMar  2 15:10:01 web-01 nagios-nrpe: DISK CRITICAL',
         '/var/log/nginx/error.log': '2026/03/02 15:00:01 [notice] 168#168: signal process started',
         '/tmp': ['debug-output.log'],
         '/tmp/debug-output.log': '[Simulated content: 1.7GB debug log file - repeated stack traces and verbose output from a debugging session that was left running]',
-        '/root': ['sim/', '.ash_history'],
-        '/root/sim': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
+        '/home/ops': ['scripts/', '.bash_history'],
+        '/home/ops/scripts': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
       },
       duResults: {
         '/tmp/*': '1.7G\t/tmp/debug-output.log',
         '/tmp': '1.7G\t/tmp',
         '/var/log/*': '12M\t/var/log/messages\n4K\t/var/log/nginx',
       },
-      wOutput: ' 15:10:22 up 3 days, 8:29,  1 user,  load average: 0.12, 0.08, 0.05\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nroot     pts/0    10.0.2.2         15:08    0.00s  0.01s  0.00s w',
+      wOutput: ' 15:10:22 up 3 days, 8:29,  1 user,  load average: 0.12, 0.08, 0.05\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nops      pts/0    192.168.1.1      15:08    0.00s  0.01s  0.00s w',
       netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      142/sshd\ntcp        0      0 0.0.0.0:8081            0.0.0.0:*               LISTEN      168/nginx\ntcp        0      0 0.0.0.0:5666            0.0.0.0:*               LISTEN      200/nrpe',
       vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 0  1      0 142000  20000 200000    0    0  2400  1800  180  320  2  3 80 15  0\n 0  1      0 141800  20000 200000    0    0  2200  1600  175  310  1  2 82 15  0',
       monitorSpec: {
-        host: { name:'alpine-vm', os:'Alpine Linux 3.19', ip:'10.0.2.15 (NAT: 127.0.0.1:2222)', ssh:'ssh -p 2222 root@127.0.0.1' },
-        service: { name:'Disk Usage', plugin:'check_nrpe -H alpine-vm -c check_disk', warning:'80%', critical:'90%', interval:'10min' },
+        host: { name:'web-01', os:'Ubuntu 22.04', ip:'192.168.1.10', ssh:'ssh ops@192.168.1.10' },
+        service: { name:'Disk Usage', plugin:'check_nrpe -H web-01 -c check_disk', warning:'80%', critical:'90%', interval:'10min', url:'http://localhost:8081/health' },
         runbook: {
           checks: [
+            'browse http://localhost:8081/health でサイトの応答を確認',
             'df -h で各パーティションの使用率を確認',
             'du -sh /tmp/* /var/log/* 等で大きなディレクトリ・ファイルを特定',
             'ログローテーション設定（logrotate）の確認',
@@ -349,18 +354,20 @@ const SCENARIOS = [
       resolved: false,
       checkResolution(state) { return state.bigFileRemoved; },
       idealTime: 120,
-      idealCmds: 11,
+      idealCmds: 12,
       idealSteps: [
-        'ssh -p 2222 root@127.0.0.1 でalpine-vmに接続',
+        'ssh ops@192.168.1.10 でweb-01に接続',
+        'browse http://localhost:8081/health でサービス影響を確認',
         'w で負荷状況を確認',
         'ps auxfww でプロセスを確認',
-        'netstat -antp でポートを確認',
+        'sudo netstat -antp でポートを確認',
         'top -c -d 1 でリアルタイム状況を確認',
         'vmstat 1 でI/O状態を確認（ディスクI/Oが高い）',
         'df -h でディスク使用状況を確認',
         'du -sh /tmp/* で大きなファイルを探す',
         'rm /tmp/debug-output.log で巨大ログを削除',
-        'df -h で空き容量の回復を確認'
+        'df -h で空き容量の回復を確認',
+        '対応結果をチームに報告'
       ],
       explanation: '/tmp に 1.7GB の debug-output.log が放置されていました。デバッグセッションの出力が無制限にログされた結果です。rm で削除すれば即座にディスク容量が回復します。vmstat の bi/bo が高い値を示しており、ディスクI/O負荷の手がかりになります。',
       hints: [
@@ -374,27 +381,27 @@ const SCENARIOS = [
 {
   id: 3,
   title: 'nginx停止 — サービスダウン',
-  host: 'alpine-vm',
+  host: 'web-01',
   difficulty: 'Medium',
-  desc: 'alpine-vm の HTTP チェックが CRITICAL。Webサーバーを復旧せよ。',
+  desc: 'web-01 の HTTP チェックが CRITICAL。Webサーバーの一次対応を行え。',
   nagios: {
     label: '***** Nagios Alert *****',
     type: 'PROBLEM',
-    host: 'alpine-vm',
+    host: 'web-01',
     service: 'HTTP',
     state: 'CRITICAL',
-    output: 'HTTP CRITICAL - Connection refused - connect to address 127.0.0.1 and target port 8081: Connection refused',
+    output: 'HTTP CRITICAL - Connection refused - connect to address 192.168.1.10 and target port 8081: Connection refused',
     time: '2026-03-02 16:05:33 JST'
   },
-  sshUser: 'root',
-  sshPort: '2222',
-  sshAddr: '127.0.0.1',
+  sshUser: 'ops',
+  sshPort: '22',
+  sshAddr: '192.168.1.10',
   initState() {
     return {
-      hostname: 'alpine-vm',
-      user: 'root',
-      home: '/root',
-      cwd: '/root',
+      hostname: 'web-01',
+      user: 'ops',
+      home: '/home/ops',
+      cwd: '/home/ops',
       uptime: ' 16:05:33 up 3 days, 9:24,  1 user,  load average: 0.05, 0.03, 0.01',
       procs: [
         { user:'root', pid:1, cpu:0.0, mem:0.1, vsz:1840, rss:1200, tty:'?', stat:'Ss', start:'Feb27', time:'0:03', cmd:'/sbin/init' },
@@ -403,54 +410,58 @@ const SCENARIOS = [
       ],
       fs: { '/': { size:'2.0G', used:'680M', avail:'1.2G', pct:'36%', mount:'/' } },
       mem: { total:460, used:82, free:158, shared:4, buff:220, avail:358, swapTotal:0, swapUsed:0, swapFree:0 },
-      services: { nginx:'stopped', sshd:'started', nrpe:'started' },
+      services: { nginx:'stopped', sshd:'active', nrpe:'active' },
       files: {
-        '/var/log/messages': 'Mar  2 16:02:15 alpine-vm nginx: caught SIGTERM, shutting down\nMar  2 16:02:15 alpine-vm nginx: process exited with code 0',
+        '/var/log/messages': 'Mar  2 16:02:15 web-01 nginx: caught SIGTERM, shutting down\nMar  2 16:02:15 web-01 nginx: process exited with code 0',
         '/var/log/nginx/error.log': '2026/03/02 16:02:15 [notice] 168#168: signal 15 (SIGTERM) received from 1, exiting\n2026/03/02 16:02:15 [notice] 168#168: worker process 169 exited with code 0\n2026/03/02 16:02:15 [notice] 168#168: exit',
         '/var/log/nginx/access.log': '127.0.0.1 - - [02/Mar/2026:16:00:01 +0900] "GET /health HTTP/1.1" 200 2',
-        '/root': ['sim/', '.ash_history'],
-        '/root/sim': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
+        '/home/ops': ['scripts/', '.bash_history'],
+        '/home/ops/scripts': ['stress-test.sh', 'nginx-start.sh', 'disk-clean.sh', 'all-clear.sh'],
         '/etc/nginx/nginx.conf': 'worker_processes auto;\nevents { worker_connections 128; }\nhttp {\n  server {\n    listen 8081;\n    location /health { return 200 "OK"; }\n    location / { root /var/www/html; }\n  }\n}',
       },
-      wOutput: ' 16:05:33 up 3 days, 9:24,  1 user,  load average: 0.05, 0.03, 0.01\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nroot     pts/0    10.0.2.2         16:03    0.00s  0.01s  0.00s w',
+      wOutput: ' 16:05:33 up 3 days, 9:24,  1 user,  load average: 0.05, 0.03, 0.01\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nops      pts/0    192.168.1.1      16:03    0.00s  0.01s  0.00s w',
       netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      142/sshd\ntcp        0      0 0.0.0.0:5666            0.0.0.0:*               LISTEN      200/nrpe',
       vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 0  0      0 158000  20000 200000    0    0     5     2   80  150  0  1 99  0  0\n 0  0      0 158000  20000 200000    0    0     3     1   75  140  0  0 100  0  0',
       monitorSpec: {
-        host: { name:'alpine-vm', os:'Alpine Linux 3.19', ip:'10.0.2.15 (NAT: 127.0.0.1:2222)', ssh:'ssh -p 2222 root@127.0.0.1' },
-        service: { name:'HTTP', plugin:'check_http -H 127.0.0.1 -p 8081', warning:'-', critical:'Connection refused', interval:'3min' },
+        host: { name:'web-01', os:'Ubuntu 22.04', ip:'192.168.1.10', ssh:'ssh ops@192.168.1.10' },
+        service: { name:'HTTP', plugin:'check_http -H 192.168.1.10 -p 8081', warning:'-', critical:'Connection refused', interval:'3min', url:'http://localhost:8081/health' },
         runbook: {
           checks: [
-            'rc-service nginx status でサービス状態を確認',
-            'netstat -antp でポート 8081 の LISTEN 有無を確認',
+            'browse http://localhost:8081/health でサイトの応答を確認',
+            'systemctl status nginx でサービス状態を確認',
+            'sudo netstat -antp でポート 8081 の LISTEN 有無を確認',
             '/var/log/nginx/error.log でエラー内容を確認',
           ],
           criteria: [
             'Connection refused = プロセス停止（ポートが LISTEN していない）',
             '設定エラーの場合 → nginx -t で検証後、設定を修正',
-            '設定正常なら → rc-service nginx start で起動',
+            '設定正常なら → sudo systemctl start nginx で起動',
           ]
         },
       },
       resolved: false,
-      checkResolution(state) { return state.services.nginx === 'started'; },
+      checkResolution(state) { return state.services.nginx === 'active'; },
       idealTime: 90,
-      idealCmds: 10,
+      idealCmds: 12,
       idealSteps: [
-        'ssh -p 2222 root@127.0.0.1 でalpine-vmに接続',
+        'ssh ops@192.168.1.10 でweb-01に接続',
+        'browse http://localhost:8081/health でサービス影響を確認（ERR_CONNECTION_REFUSED）',
         'w で負荷状況を確認',
         'ps auxfww でプロセスを確認（nginxがいない）',
-        'netstat -antp でポートを確認（:8081がない = nginx停止の証拠）',
+        'sudo netstat -antp でポートを確認（:8081がない = nginx停止の証拠）',
         'top -c -d 1 でリアルタイム状況を確認',
         'vmstat 1 でシステム状態を確認',
-        'rc-service nginx status でnginxの状態を確認',
+        'systemctl status nginx でnginxの状態を確認',
         'tail /var/log/nginx/error.log でログからSIGTERMを確認',
-        'rc-service nginx start でnginxを起動'
+        'sudo systemctl start nginx でnginxを起動',
+        'browse http://localhost:8081/health で復旧を確認（200 OK）',
+        '対応結果をチームに報告'
       ],
-      explanation: 'nginxがSIGTERMを受けて正常終了していました。netstatで:8081がLISTENしていないことから、nginxが停止していることが一目でわかります。Alpine LinuxではOpenRCを使うため、rc-service nginx start で起動します。',
+      explanation: 'nginxがSIGTERMを受けて正常終了していました。netstatで:8081がLISTENしていないことから、nginxが停止していることが一目でわかります。systemctl start nginx で起動します。',
       hints: [
-        'netstat -antp で:8081がLISTENしていないことを確認しましょう',
+        'sudo netstat -antp で:8081がLISTENしていないことを確認しましょう',
         'ps auxfww でnginxプロセスが存在しないことを確認し、ログも見てみましょう',
-        'rc-service nginx start で起動できます（Alpine Linuxでは systemctl ではなく rc-service です）'
+        'sudo systemctl start nginx で起動できます'
       ]
     };
   }
@@ -458,53 +469,53 @@ const SCENARIOS = [
 {
   id: 4,
   title: 'メモリ枯渇 — リークプロセス',
-  host: 'sentinel',
+  host: 'monitor-01',
   difficulty: 'Medium',
-  desc: 'sentinel の Memory Usage が CRITICAL。メモリを消費しているプロセスを特定して対処せよ。',
+  desc: 'monitor-01 の Memory Usage が CRITICAL。メモリを消費しているプロセスを特定して一次対応を行え。',
   nagios: {
     label: '***** Nagios Alert *****',
     type: 'PROBLEM',
-    host: 'sentinel',
+    host: 'monitor-01',
     service: 'Memory Usage',
     state: 'CRITICAL',
     output: 'MEMORY CRITICAL - 93.2% used (932/1000MB) | mem_used_pct=93.2%;80;90;0;100',
     time: '2026-03-02 17:30:45 JST'
   },
-  sshUser: 'niko',
+  sshUser: 'ops',
   sshPort: '22',
-  sshAddr: '100.94.48.25',
+  sshAddr: '192.168.1.20',
   initState() {
     return {
-      hostname: 'sentinel',
-      user: 'niko',
-      home: '/home/niko',
-      cwd: '/home/niko',
+      hostname: 'monitor-01',
+      user: 'ops',
+      home: '/home/ops',
+      cwd: '/home/ops',
       uptime: ' 17:30:45 up 14 days, 2:15,  1 user,  load average: 0.88, 0.72, 0.45',
       procs: [
         { user:'root', pid:1, cpu:0.0, mem:0.1, vsz:16840, rss:11200, tty:'?', stat:'Ss', start:'Feb16', time:'0:12', cmd:'/sbin/init' },
         { user:'root', pid:412, cpu:0.0, mem:0.2, vsz:15400, rss:5400, tty:'?', stat:'Ss', start:'Feb16', time:'0:05', cmd:'/usr/sbin/sshd -D' },
-        { user:'niko', pid:1580, cpu:0.2, mem:1.8, vsz:52000, rss:18400, tty:'?', stat:'Ssl', start:'Feb16', time:'5:22', cmd:'/usr/sbin/tailscaled --state=/var/lib/tailscale/tailscaled.state' },
-        { user:'niko', pid:2100, cpu:0.5, mem:2.4, vsz:780000, rss:24000, tty:'?', stat:'Ssl', start:'Feb20', time:'12:30', cmd:'node /home/niko/niko-watchdog/watchdog.js' },
-        { user:'niko', pid:5432, cpu:12.3, mem:78.0, vsz:820000, rss:780000, tty:'?', stat:'Sl', start:'17:15', time:'1:52', cmd:'node /home/niko/leak-test.js' },
+        { user:'ops', pid:2100, cpu:0.5, mem:2.4, vsz:780000, rss:24000, tty:'?', stat:'Ssl', start:'Feb20', time:'12:30', cmd:'node /opt/watchdog/watchdog.js' },
+        { user:'ops', pid:5432, cpu:12.3, mem:78.0, vsz:820000, rss:780000, tty:'?', stat:'Sl', start:'17:15', time:'1:52', cmd:'node /home/ops/leak-test.js' },
         { user:'root', pid:310, cpu:0.0, mem:0.3, vsz:18200, rss:6800, tty:'?', stat:'Ss', start:'Feb16', time:'0:08', cmd:'/lib/systemd/systemd-journald' },
       ],
       fs: { '/': { size:'46G', used:'8.2G', avail:'36G', pct:'19%', mount:'/' } },
       mem: { total:1000, used:932, free:18, shared:12, buff:50, avail:38, swapTotal:2048, swapUsed:1200, swapFree:848 },
-      services: { 'niko-watchdog':'active', sshd:'active', tailscaled:'active' },
+      services: { 'watchdog':'active', sshd:'active' },
       files: {
-        '/home/niko': ['niko-watchdog/', 'leak-test.js', '.bashrc'],
-        '/home/niko/leak-test.js': 'const data = [];\nsetInterval(() => {\n  // Memory leak: pushing 1MB every second\n  data.push(Buffer.alloc(1024 * 1024));\n  console.log(`Allocated: ${data.length}MB`);\n}, 1000);',
-        '/var/log/syslog': 'Mar  2 17:25:01 sentinel kernel: [OOM warning] low memory condition\nMar  2 17:28:33 sentinel systemd: niko-watchdog.service: memory pressure detected\nMar  2 17:30:01 sentinel kernel: [OOM warning] swap usage high',
-        '/home/niko/niko-watchdog': ['watchdog.js', 'package.json', '.env', 'dashboard.html'],
+        '/home/ops': ['leak-test.js', '.bashrc'],
+        '/home/ops/leak-test.js': 'const data = [];\nsetInterval(() => {\n  // Memory leak: pushing 1MB every second\n  data.push(Buffer.alloc(1024 * 1024));\n  console.log(`Allocated: ${data.length}MB`);\n}, 1000);',
+        '/var/log/syslog': 'Mar  2 17:25:01 monitor-01 kernel: [OOM warning] low memory condition\nMar  2 17:28:33 monitor-01 systemd: watchdog.service: memory pressure detected\nMar  2 17:30:01 monitor-01 kernel: [OOM warning] swap usage high',
+        '/opt/watchdog': ['watchdog.js', 'package.json', '.env', 'dashboard.html'],
       },
-      wOutput: ' 17:30:45 up 14 days, 2:15,  1 user,  load average: 0.88, 0.72, 0.45\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nniko     pts/0    100.98.189.121   17:28    0.00s  0.02s  0.00s w',
+      wOutput: ' 17:30:45 up 14 days, 2:15,  1 user,  load average: 0.88, 0.72, 0.45\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nops      pts/0    192.168.1.1      17:28    0.00s  0.02s  0.00s w',
       netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      412/sshd\ntcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      2100/node',
       vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 1  0 1200000  18000   5000  45000  120   80    60    40  200  400 15  5 70 10  0\n 1  0 1210000  16000   5000  44000  150  100    70    50  210  420 18  6 66 10  0',
       monitorSpec: {
-        host: { name:'sentinel', os:'Ubuntu 22.04', ip:'161.33.150.102 (Tailscale: 100.94.48.25)', ssh:'ssh niko@100.94.48.25' },
-        service: { name:'Memory Usage', plugin:'check_by_ssh -H sentinel -C check_mem.sh', warning:'80%', critical:'90%', interval:'5min' },
+        host: { name:'monitor-01', os:'Ubuntu 22.04', ip:'192.168.1.20', ssh:'ssh ops@192.168.1.20' },
+        service: { name:'Memory Usage', plugin:'check_by_ssh -H monitor-01 -C check_mem.sh', warning:'80%', critical:'90%', interval:'5min', url:'http://localhost:8080/health' },
         runbook: {
           checks: [
+            'browse http://localhost:8080/health でサイトの応答を確認',
             'free -m でメモリ使用率・swap 使用状況を確認',
             'ps auxfww --sort=-rss | head でメモリ消費の大きいプロセスを特定',
             'vmstat 1 で swap in/out（si/so）の発生頻度を確認',
@@ -522,20 +533,22 @@ const SCENARIOS = [
         return !leakAlive;
       },
       idealTime: 120,
-      idealCmds: 11,
+      idealCmds: 12,
       idealSteps: [
-        'ssh niko@100.94.48.25 でsentinelに接続',
+        'ssh ops@192.168.1.20 でmonitor-01に接続',
+        'browse http://localhost:8080/health でサービス影響を確認',
         'w で負荷状況を確認',
         'ps auxfww でプロセスツリーを確認',
-        'netstat -antp でポートを確認',
+        'sudo netstat -antp でポートを確認',
         'top -c -d 1 でメモリ使用状況をリアルタイムで確認',
         'vmstat 1 でswap使用状況を確認（swpd/si/soが高い）',
         'free -m でメモリ使用状況を確認',
-        'cat /home/niko/leak-test.js でリークの原因コードを確認',
+        'cat /home/ops/leak-test.js でリークの原因コードを確認',
         'kill 5432 でリークプロセスを停止',
-        'free -m でメモリ回復を確認'
+        'free -m でメモリ回復を確認',
+        '対応結果をチームに報告'
       ],
-      explanation: 'leak-test.js が1秒ごとに1MBのBufferを配列に追加し続けるメモリリークを起こしていました。780MBまで膨張し、1GBしかないsentinelのメモリをほぼ使い切っていました。vmstatでswpd/si/soの値が高く、swap大量使用の兆候が読み取れます。kill でプロセスを停止すれば即座にメモリが解放されます。',
+      explanation: 'leak-test.js が1秒ごとに1MBのBufferを配列に追加し続けるメモリリークを起こしていました。780MBまで膨張し、1GBしかないmonitor-01のメモリをほぼ使い切っていました。vmstatでswpd/si/soの値が高く、swap大量使用の兆候が読み取れます。kill でプロセスを停止すれば即座にメモリが解放されます。',
       hints: [
         'free -m でメモリの使用状況を確認しましょう',
         'ps auxfww --sort=-%mem | head でメモリを大量に使っているプロセスを探しましょう',
@@ -546,87 +559,86 @@ const SCENARIOS = [
 },
 {
   id: 5,
-  title: 'niko-appクラッシュ — サービス停止',
-  host: 'minipc',
+  title: 'webappクラッシュ — サービス停止',
+  host: 'app-01',
   difficulty: 'Hard',
-  desc: 'minipc の niko-app が異常停止。サービスを調査して復旧せよ。',
+  desc: 'app-01 の webapp が異常停止。サービスを調査して一次対応を行え。',
   nagios: {
     label: '***** Nagios Alert *****',
     type: 'PROBLEM',
-    host: 'minipc',
-    service: 'niko-app',
+    host: 'app-01',
+    service: 'webapp',
     state: 'CRITICAL',
-    output: 'HTTP CRITICAL - Connection refused - connect to address 100.85.53.125 and target port 3939: Connection refused',
+    output: 'HTTP CRITICAL - Connection refused - connect to address 192.168.1.30 and target port 3939: Connection refused',
     time: '2026-03-02 18:45:10 JST'
   },
-  sshUser: 'niko',
+  sshUser: 'ops',
   sshPort: '22',
-  sshAddr: '100.85.53.125',
+  sshAddr: '192.168.1.30',
   initState() {
     return {
-      hostname: 'minipc',
-      user: 'niko',
-      home: '/home/niko',
-      cwd: '/home/niko',
+      hostname: 'app-01',
+      user: 'ops',
+      home: '/home/ops',
+      cwd: '/home/ops',
       uptime: ' 18:45:10 up 21 days, 5:33,  1 user,  load average: 0.15, 0.22, 0.18',
       procs: [
         { user:'root', pid:1, cpu:0.0, mem:0.2, vsz:16840, rss:11200, tty:'?', stat:'Ss', start:'Feb09', time:'0:45', cmd:'/sbin/init' },
         { user:'root', pid:385, cpu:0.0, mem:0.3, vsz:15400, rss:5400, tty:'?', stat:'Ss', start:'Feb09', time:'0:12', cmd:'/usr/sbin/sshd -D' },
-        { user:'niko', pid:1200, cpu:0.1, mem:1.2, vsz:52000, rss:18400, tty:'?', stat:'Ssl', start:'Feb09', time:'8:30', cmd:'/usr/sbin/tailscaled' },
         { user:'root', pid:290, cpu:0.0, mem:0.3, vsz:18200, rss:6800, tty:'?', stat:'Ss', start:'Feb09', time:'0:22', cmd:'/lib/systemd/systemd-journald' },
         { user:'root', pid:450, cpu:0.3, mem:0.8, vsz:120000, rss:48000, tty:'?', stat:'Ssl', start:'Feb09', time:'2:15', cmd:'/usr/bin/dockerd' },
       ],
       fs: { '/': { size:'58G', used:'12G', avail:'43G', pct:'22%', mount:'/' } },
       mem: { total:5837, used:1842, free:2105, shared:48, buff:1890, avail:3780, swapTotal:2048, swapUsed:128, swapFree:1920 },
       services: {
-        'niko-app': 'failed',
+        'webapp': 'failed',
         'sshd': 'active',
-        'tailscaled': 'active',
         'docker': 'active',
       },
       systemctl: {
-        'niko-app': {
-          status: `● niko-app.service - Niko App (Hono API Server)
-     Loaded: loaded (/etc/systemd/system/niko-app.service; enabled; preset: enabled)
+        'webapp': {
+          status: `● webapp.service - Webapp (Hono API Server)
+     Loaded: loaded (/etc/systemd/system/webapp.service; enabled; preset: enabled)
      Active: failed (Result: exit-code) since Mon 2026-03-02 18:44:55 JST; 15s ago
-    Process: 8821 ExecStart=/home/niko/.nvm/versions/node/v22.22.0/bin/node dist/index.js (code=exited, status=1/FAILURE)
+    Process: 8821 ExecStart=/usr/local/bin/node dist/index.js (code=exited, status=1/FAILURE)
    Main PID: 8821 (code=exited, status=1/FAILURE)
         CPU: 1.2s
 
-Mar 02 18:44:55 minipc systemd[1]: niko-app.service: Main process exited, code=exited, status=1/FAILURE
-Mar 02 18:44:55 minipc systemd[1]: niko-app.service: Failed with result 'exit-code'.`,
-          journal: `Mar 02 18:44:52 minipc niko-app[8821]: Server starting on port 3939...
-Mar 02 18:44:53 minipc niko-app[8821]: Loading embodiment server...
-Mar 02 18:44:54 minipc niko-app[8821]: Error: Cannot find module '/home/niko/niko-app/dist/index.js'
-Mar 02 18:44:54 minipc niko-app[8821]:     at Module._resolveFilename (node:internal/modules/cjs/loader:1138:15)
-Mar 02 18:44:54 minipc niko-app[8821]:     at Module._load (node:internal/modules/cjs/loader:989:27)
-Mar 02 18:44:55 minipc niko-app[8821]: Node.js process exited with code 1
-Mar 02 18:44:55 minipc systemd[1]: niko-app.service: Main process exited, code=exited, status=1/FAILURE`
+Mar 02 18:44:55 app-01 systemd[1]: webapp.service: Main process exited, code=exited, status=1/FAILURE
+Mar 02 18:44:55 app-01 systemd[1]: webapp.service: Failed with result 'exit-code'.`,
+          journal: `Mar 02 18:44:52 app-01 webapp[8821]: Server starting on port 3939...
+Mar 02 18:44:53 app-01 webapp[8821]: Loading embodiment server...
+Mar 02 18:44:54 app-01 webapp[8821]: Error: Cannot find module '/opt/webapp/dist/index.js'
+Mar 02 18:44:54 app-01 webapp[8821]:     at Module._resolveFilename (node:internal/modules/cjs/loader:1138:15)
+Mar 02 18:44:54 app-01 webapp[8821]:     at Module._load (node:internal/modules/cjs/loader:989:27)
+Mar 02 18:44:55 app-01 webapp[8821]: Node.js process exited with code 1
+Mar 02 18:44:55 app-01 systemd[1]: webapp.service: Main process exited, code=exited, status=1/FAILURE`
         }
       },
       files: {
-        '/home/niko': ['niko-app/', 'nagios-lab/', 'edge-tts-venv/', '.bashrc'],
-        '/home/niko/niko-app': ['src/', 'package.json', 'tsconfig.json', '.env', 'node_modules/'],
-        '/home/niko/niko-app/src': ['index.ts', 'routes/', 'camera/', 'embodiment/'],
-        '/home/niko/niko-app/dist': [],
-        '/home/niko/niko-app/package.json': '{\n  "name": "niko-app",\n  "scripts": {\n    "build": "tsc",\n    "start": "node dist/index.js",\n    "dev": "tsx src/index.ts"\n  }\n}',
-        '/var/log/syslog': 'Mar  2 18:40:01 minipc niko-app[8800]: rsync deploy received\nMar  2 18:42:30 minipc niko-app[8800]: build started\nMar  2 18:44:50 minipc systemd[1]: Stopping niko-app.service...\nMar  2 18:44:52 minipc systemd[1]: Starting niko-app.service...\nMar  2 18:44:55 minipc systemd[1]: niko-app.service: Failed with result \'exit-code\'.',
+        '/home/ops': ['.bashrc'],
+        '/opt/webapp': ['src/', 'package.json', 'tsconfig.json', '.env', 'node_modules/'],
+        '/opt/webapp/src': ['index.ts', 'routes/', 'camera/', 'embodiment/'],
+        '/opt/webapp/dist': [],
+        '/opt/webapp/package.json': '{\n  "name": "webapp",\n  "scripts": {\n    "build": "tsc",\n    "start": "node dist/index.js",\n    "dev": "tsx src/index.ts"\n  }\n}',
+        '/var/log/syslog': 'Mar  2 18:40:01 app-01 webapp[8800]: rsync deploy received\nMar  2 18:42:30 app-01 webapp[8800]: build started\nMar  2 18:44:50 app-01 systemd[1]: Stopping webapp.service...\nMar  2 18:44:52 app-01 systemd[1]: Starting webapp.service...\nMar  2 18:44:55 app-01 systemd[1]: webapp.service: Failed with result \'exit-code\'.',
       },
-      wOutput: ' 18:45:10 up 21 days, 5:33,  1 user,  load average: 0.15, 0.22, 0.18\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nniko     pts/0    100.98.189.121   18:43    0.00s  0.01s  0.00s w',
+      wOutput: ' 18:45:10 up 21 days, 5:33,  1 user,  load average: 0.15, 0.22, 0.18\nUSER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT\nops      pts/0    192.168.1.1      18:43    0.00s  0.01s  0.00s w',
       netstat: 'Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\ntcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      385/sshd',
       vmstat: 'procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----\n r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st\n 0  0 128000 2105000 200000 1690000    0    0     8     4  120  250  1  1 98  0  0\n 0  0 128000 2105000 200000 1690000    0    0     5     2  115  240  0  1 99  0  0',
       monitorSpec: {
-        host: { name:'minipc', os:'Manjaro Linux (i3wm)', ip:'100.85.53.125 (Tailscale)', ssh:'ssh niko@100.85.53.125' },
-        service: { name:'niko-app', plugin:'check_http -H 100.85.53.125 -p 3939', warning:'-', critical:'Connection refused', interval:'3min' },
+        host: { name:'app-01', os:'Ubuntu 22.04', ip:'192.168.1.30', ssh:'ssh ops@192.168.1.30' },
+        service: { name:'webapp', plugin:'check_http -H 192.168.1.30 -p 3939', warning:'-', critical:'Connection refused', interval:'3min', url:'http://localhost:3939/' },
         runbook: {
           checks: [
-            'systemctl status niko-app でサービス状態を確認',
-            'journalctl -u niko-app -n 20 でエラーログを確認',
-            'ls /home/niko/niko-app/dist/ でビルド成果物の有無を確認',
+            'browse http://localhost:3939/ でサイトの応答を確認',
+            'systemctl status webapp でサービス状態を確認',
+            'journalctl -u webapp -n 20 でエラーログを確認',
+            'ls /opt/webapp/dist/ でビルド成果物の有無を確認',
           ],
           criteria: [
             'Connection refused = プロセス停止（:3939 が LISTEN していない）',
-            'ビルド成果物欠損 → npm run build → systemctl restart niko-app',
+            'ビルド成果物欠損 → エンジニアチームにエスカレーション',
             '設定エラー → .env やソースを修正後、再ビルド＆再起動',
           ]
         },
@@ -634,28 +646,28 @@ Mar 02 18:44:55 minipc systemd[1]: niko-app.service: Main process exited, code=e
       needsBuild: true,
       rebuilt: false,
       resolved: false,
-      checkResolution(state) { return state.services['niko-app'] === 'active'; },
+      escalated: false,
+      checkResolution(state) { return state.escalated === true; },
       idealTime: 150,
-      idealCmds: 13,
+      idealCmds: 15,
       idealSteps: [
-        'ssh niko@100.85.53.125 でminipcに接続',
+        'ssh ops@192.168.1.30 でapp-01に接続',
+        'browse http://localhost:3939/ でサービス影響を確認（ERR_CONNECTION_REFUSED）',
         'w で負荷状況を確認',
-        'ps auxfww でプロセスを確認（niko-appがいない）',
-        'netstat -antp でポートを確認（:3939がない = niko-app停止の証拠）',
+        'ps auxfww でプロセスを確認（webappがいない）',
+        'sudo netstat -antp でポートを確認（:3939がない）',
         'top -c -d 1 でリアルタイム状況を確認',
         'vmstat 1 でシステム状態を確認',
-        'systemctl status niko-app でサービス状態を確認',
-        'journalctl -u niko-app -n 20 でエラーログを確認',
-        'ls /home/niko/niko-app/dist/ でdistディレクトリが空なのを確認',
-        'cd /home/niko/niko-app && npm run build でTypeScriptをビルド',
-        'sudo systemctl restart niko-app でサービスを再起動',
-        'systemctl status niko-app で復旧を確認'
+        'systemctl status webapp でサービス状態を確認',
+        'journalctl -u webapp -n 20 でエラーログを確認',
+        'ls /opt/webapp/dist/ でdistディレクトリが空なのを確認',
+        'escalate でエンジニアチームにエスカレーション',
       ],
-      explanation: 'rsyncデプロイ後にdist/ディレクトリが空（ビルド成果物がない）状態でサービスが再起動され、"Cannot find module dist/index.js" でクラッシュしていました。netstatで:3939がLISTENしていないことからniko-appが停止していることが明らかです。npm run build で dist/ にコンパイルしてからサービスを再起動する必要があります。',
+      explanation: 'rsyncデプロイ後にdist/ディレクトリが空（ビルド成果物がない）状態でサービスが再起動され、"Cannot find module dist/index.js" でクラッシュしていました。ビルド（npm run build）はオペレーターの範囲外の作業です。原因を特定し、エンジニアチームにエスカレーションするのが正しい一次対応です。',
       hints: [
-        'systemctl status niko-app でサービスの状態を確認しましょう',
-        'journalctl で "Cannot find module dist/index.js" が見えるはず。ls /home/niko/niko-app/dist/ を確認しましょう',
-        'dist/ が空です。cd /home/niko/niko-app && npm run build してから sudo systemctl restart niko-app しましょう'
+        'systemctl status webapp でサービスの状態を確認しましょう',
+        'journalctl で "Cannot find module dist/index.js" が見えるはず。ls /opt/webapp/dist/ を確認しましょう',
+        'dist/ が空です。ビルドはオペレーターの範囲外です。escalate でエスカレーションしましょう'
       ]
     };
   }
@@ -753,6 +765,7 @@ function renderSpecPanel(scenario, state) {
     <div class="spec-row"><span class="spec-label">Warning: </span><span class="spec-val">${spec.service.warning}</span></div>
     <div class="spec-row"><span class="spec-label">Critical: </span><span class="spec-val">${spec.service.critical}</span></div>
     <div class="spec-row"><span class="spec-label">Interval: </span><span class="spec-val">${spec.service.interval}</span></div>
+    ${spec.service.url ? `<div class="spec-row"><span class="spec-label">URL: </span><span class="spec-val">${spec.service.url}</span></div>` : ''}
   `;
   const checksEl = $('spec-checks');
   checksEl.innerHTML = '';
@@ -853,7 +866,7 @@ function startGame(scenario) {
   appendLine(`[${scenario.nagios.time}] Nagios Alert Received`, 'error');
   appendLine(`${scenario.nagios.service} on ${scenario.nagios.host} is ${scenario.nagios.state}`, 'error');
   appendLine('', 'output');
-  appendLine('ホストに接続して障害を調査・復旧してください。', 'info');
+  appendLine('ホストに接続して障害を調査し、一次対応を行ってください。', 'info');
   appendLine('help でコマンド一覧、hint でヒントを表示できます。', 'info');
   appendLine('', 'output');
 
@@ -1012,7 +1025,7 @@ function execCommand(rawInput) {
     if (!G.state.resolved) {
       G.state.resolved = true;
       appendLine('', 'output');
-      appendLine('=== 障害が復旧しました！ ===', 'success');
+      appendLine('=== 一次対応が完了しました！ ===', 'success');
       appendLine('exit で切断し、結果を確認しましょう。', 'info');
     }
   }
@@ -1033,10 +1046,10 @@ function execMain(input) {
     if (cmd === 'ssh') return handleSSH(args);
     if (cmd === 'exit') {
       if (G.state.resolved) { endGame(); return null; }
-      appendLine('まだ障害が復旧していません。ssh でホストに接続してください。', 'info');
+      appendLine('まだ一次対応が完了していません。ssh でホストに接続してください。', 'info');
       return null;
     }
-    appendLine(`まずは ssh でホストに接続してください。例: ssh ${G.scenario.sshUser === 'root' ? '-p 2222 root@127.0.0.1' : G.scenario.sshUser + '@' + G.scenario.sshAddr}`, 'info');
+    appendLine(`まずは ssh でホストに接続してください。例: ssh ops@${G.scenario.sshAddr}`, 'info');
     return null;
   }
 
@@ -1047,7 +1060,7 @@ function execMain(input) {
     updatePrompt();
     if (G.state.resolved) {
       appendLine('', 'output');
-      appendLine('復旧済みです。もう一度 exit でリザルト画面に進みます。', 'info');
+      appendLine('一次対応完了です。もう一度 exit でリザルト画面に進みます。', 'info');
     }
     return null;
   }
@@ -1127,6 +1140,13 @@ function execRemote(cmd, args) {
     }
 
     case 'netstat': {
+      if (s.user !== 'root') {
+        return s.netstat.split('\n').map(line =>
+          line.includes('PID/Program name')
+            ? line.replace(/\s+PID\/Program name/, '')
+            : line.replace(/\s+\d+\/\S+$/, '')
+        ).join('\n');
+      }
       return s.netstat;
     }
 
@@ -1267,6 +1287,7 @@ function execRemote(cmd, args) {
       if (!pid) return 'kill: usage: kill [-s sigspec | -n signum | -sigspec] pid';
       const proc = s.procs.find(p => p.pid === pid && !p.killed);
       if (!proc) return `bash: kill: (${pid}) - No such process`;
+      if (proc.user !== s.user && s.user !== 'root') return `bash: kill: (${pid}) - Operation not permitted`;
       proc.killed = true;
       // Update memory if applicable
       if (proc.mem > 10) {
@@ -1284,15 +1305,17 @@ function execRemote(cmd, args) {
       if (!name) return 'killall: usage: killall name';
       const matching = s.procs.filter(p => p.cmd.includes(name) && !p.killed);
       if (matching.length === 0) return `${name}: no process found`;
-      matching.forEach(p => { p.killed = true; });
+      const permitted = matching.filter(p => p.user === s.user || s.user === 'root');
+      const denied = matching.filter(p => p.user !== s.user && s.user !== 'root');
+      if (permitted.length === 0) return `killall: Operation not permitted`;
+      permitted.forEach(p => { p.killed = true; });
+      if (denied.length > 0) {
+        return `killall: Operation not permitted for ${denied.length} process(es)`;
+      }
       return '';
     }
 
     case 'systemctl': {
-      // Alpine Linux uses OpenRC, not systemd
-      if (!s.systemctl && s.hostname === 'alpine-vm') {
-        return 'bash: systemctl: command not found (Alpine Linux uses rc-service)';
-      }
       const action = args[0];
       const svcName = args[1];
       if (!action) return 'systemctl: missing command';
@@ -1307,15 +1330,14 @@ function execRemote(cmd, args) {
         return `● ${svcName}.service\n   Active: ${st === 'active' ? 'active (running)' : st === 'failed' ? 'failed' : 'inactive (dead)'}`;
       }
 
-      if (action === 'restart') {
+      if (action === 'restart' || action === 'start') {
         if (!svcName) return 'systemctl: missing service name';
         if (s.user !== 'root') {
           return `==== AUTHENTICATING FOR org.freedesktop.systemd1.manage-units ===\nPolkit authorization required. Use sudo.`;
         }
-        if (svcName === 'niko-app' && s.needsBuild && !s.rebuilt) {
-          // Still fails if not built
-          s.services['niko-app'] = 'failed';
-          return `Job for niko-app.service failed because the control process exited with error code.\nSee "systemctl status niko-app.service" and "journalctl -xe" for details.`;
+        if (svcName === 'webapp' && s.needsBuild && !s.rebuilt) {
+          s.services['webapp'] = 'failed';
+          return `Job for webapp.service failed because the control process exited with error code.\nSee "systemctl status webapp.service" and "journalctl -xe" for details.`;
         }
         if (s.services[svcName] !== undefined) {
           s.services[svcName] = 'active';
@@ -1324,26 +1346,13 @@ function execRemote(cmd, args) {
               .replace('failed (Result: exit-code)', 'active (running)')
               .replace('Failed with result', 'Started');
           }
-          return '';
-        }
-        return `Unit ${svcName}.service could not be found.`;
-      }
-
-      if (action === 'start') {
-        if (!svcName) return 'systemctl: missing service name';
-        if (s.user !== 'root') {
-          return `==== AUTHENTICATING FOR org.freedesktop.systemd1.manage-units ===\nPolkit authorization required. Use sudo.`;
-        }
-        if (svcName === 'niko-app' && s.needsBuild && !s.rebuilt) {
-          s.services['niko-app'] = 'failed';
-          return `Job for niko-app.service failed because the control process exited with error code.\nSee "systemctl status niko-app.service" and "journalctl -xe" for details.`;
-        }
-        if (s.services[svcName] !== undefined) {
-          s.services[svcName] = 'active';
-          if (s.systemctl && s.systemctl[svcName]) {
-            s.systemctl[svcName].status = s.systemctl[svcName].status
-              .replace('failed (Result: exit-code)', 'active (running)')
-              .replace('Failed with result', 'Started');
+          // Add nginx processes and update netstat
+          if (svcName === 'nginx' && !s.procs.some(p => p.cmd.includes('nginx') && !p.killed)) {
+            s.procs.push(
+              { user:'root', pid:1168, cpu:0.0, mem:0.3, vsz:6780, rss:3200, tty:'?', stat:'Ss', start:'now', time:'0:00', cmd:'nginx: master process /usr/sbin/nginx' },
+              { user:'nobody', pid:1169, cpu:0.0, mem:0.2, vsz:7200, rss:2800, tty:'?', stat:'S', start:'now', time:'0:00', cmd:'nginx: worker process' }
+            );
+            s.netstat += '\ntcp        0      0 0.0.0.0:8081            0.0.0.0:*               LISTEN      1168/nginx';
           }
           return '';
         }
@@ -1410,7 +1419,7 @@ function execRemote(cmd, args) {
       }
       if (action === 'start') {
         if (s.services[svcName] === undefined) return `rc-service: service '${svcName}' does not exist`;
-        s.services[svcName] = 'started';
+        s.services[svcName] = 'active';
         // Add nginx procs back
         if (svcName === 'nginx') {
           s.procs.push(
@@ -1424,7 +1433,7 @@ function execRemote(cmd, args) {
       }
       if (action === 'restart') {
         if (s.services[svcName] === undefined) return `rc-service: service '${svcName}' does not exist`;
-        s.services[svcName] = 'started';
+        s.services[svcName] = 'active';
         if (svcName === 'nginx' && !s.procs.some(p => p.cmd.includes('nginx') && !p.killed)) {
           s.procs.push(
             { user:'root', pid:1168, cpu:0.0, mem:0.3, vsz:6780, rss:3200, tty:'?', stat:'Ss', start:'now', time:'0:00', cmd:'nginx: master process /usr/sbin/nginx' },
@@ -1477,13 +1486,13 @@ function execRemote(cmd, args) {
     case 'npm': {
       if (args[0] === 'run' && args[1] === 'build') {
         if (s.needsBuild) {
-          if (s.cwd !== '/home/niko/niko-app') {
+          if (s.cwd !== '/opt/webapp') {
             return 'npm error: Could not read package.json: no such file or directory';
           }
           appendLine('> tsc', 'output');
           appendLine('', 'output');
           s.rebuilt = true;
-          s.files['/home/niko/niko-app/dist'] = ['index.js', 'routes/', 'camera/', 'embodiment/'];
+          s.files['/opt/webapp/dist'] = ['index.js', 'routes/', 'camera/', 'embodiment/'];
           return 'Build completed successfully.';
         }
         return 'Build completed.';
@@ -1495,13 +1504,49 @@ function execRemote(cmd, args) {
     case 'curl': {
       const url = args.filter(a => !a.startsWith('-')).pop() || '';
       // Check if curling a local service that's running
-      if (url.includes(':8081') && s.services.nginx === 'started') {
+      if (url.includes(':8081') && s.services.nginx === 'active') {
         return 'OK';
       }
-      if (url.includes(':3939') && s.services['niko-app'] === 'active') {
+      if (url.includes(':8080') && s.services['watchdog'] === 'active') {
+        return '{"status":"ok","services":7,"healthy":7}';
+      }
+      if (url.includes(':3939') && s.services['webapp'] === 'active') {
         return '{"status":"ok"}';
       }
       return 'curl: (7) Failed to connect';
+    }
+
+    case 'browse': {
+      const url = args[0] || '';
+      if (!url) return 'Usage: browse <url>';
+      // Determine port and check service status
+      const portMatch = url.match(/:(\d+)/);
+      const port = portMatch ? portMatch[1] : null;
+      let isUp = false;
+      if (port === '8081') isUp = (s.services.nginx === 'active');
+      else if (port === '8080') isUp = (s.services['watchdog'] === 'active');
+      else if (port === '3939') isUp = (s.services['webapp'] === 'active');
+
+      const w = 40;
+      const top    = '\u250c\u2500 Browser ' + '\u2500'.repeat(w - 10) + '\u2510';
+      const urlRow = '\u2502 URL: ' + url + ' '.repeat(Math.max(0, w - 7 - url.length)) + '\u2502';
+      const sep    = '\u251c' + '\u2500'.repeat(w) + '\u2524';
+      const bot    = '\u2514' + '\u2500'.repeat(w) + '\u2518';
+      const pad = (text) => '\u2502 ' + text + ' '.repeat(Math.max(0, w - 3 - text.length)) + '\u2502';
+
+      if (isUp) {
+        const body = url.includes('/health') ? 'OK' : '{"status":"ok"}';
+        return [top, urlRow, sep, pad('Status: 200 OK'), pad(''), pad(body), bot].join('\n');
+      } else {
+        return [top, urlRow, sep, pad('サイトにアクセスできません'), pad('ERR_CONNECTION_REFUSED'), bot].join('\n');
+      }
+    }
+
+    case 'escalate': {
+      appendLine('エスカレーション: エンジニアチームに状況を報告しました。', 'info');
+      appendLine('調査結果と対応内容を引き継ぎます。', 'info');
+      s.escalated = true;
+      return null;
     }
 
     default:
@@ -1579,12 +1624,14 @@ function showHelp() {
        ls [-la] [path]           ディレクトリ一覧
        du -sh <path>             ディスク使用量
 
-復旧:  kill <pid>                プロセス停止
+対応:  kill <pid>                プロセス停止
        killall <name>            名前でプロセス停止
-       systemctl status/restart  サービス管理
-       rc-service <svc> start    Alpine サービス管理
+       systemctl status/start/restart  サービス管理
+       rc-service <svc> start    サービス管理（互換）
        rm <file>                 ファイル削除
        sudo <command>            root権限で実行
+       browse <url>              サイト表示確認
+       escalate                  エンジニアチームにエスカレーション
 
 パイプ: | grep <pattern>          フィルタ
         | head [-n N]             先頭N行
